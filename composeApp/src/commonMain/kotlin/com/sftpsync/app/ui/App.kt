@@ -1057,6 +1057,22 @@ fun ProfileEditorScreen(
                             ) {
                                 Icon(Icons.Filled.FolderOpen, contentDescription = "폴더 선택")
                             }
+                        } else {
+                            // Android: SAF folder tree picker (internal + SD card)
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val picked = pickFolder(localPath)
+                                        if (picked != null) {
+                                            localPath = picked
+                                        }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp)
+                            ) {
+                                Icon(Icons.Filled.FolderOpen, contentDescription = "폴더 선택")
+                            }
                         }
                     }
 

@@ -56,14 +56,14 @@
 34-->[androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 35        android:debuggable="true"
 36        android:extractNativeLibs="false"
-37        android:icon="@mipmap/ic_launcher"
-37-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:23:9-43
+37        android:icon="@android:drawable/ic_dialog_info"
+37-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:23:9-56
 38        android:label="SFTP Sync"
 38-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:24:9-34
 39        android:requestLegacyExternalStorage="true"
 39-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:28:9-52
-40        android:roundIcon="@mipmap/ic_launcher"
-40-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:25:9-48
+40        android:roundIcon="@android:drawable/ic_dialog_info"
+40-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:25:9-61
 41        android:supportsRtl="true"
 41-->C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:26:9-35
 42        android:theme="@android:style/Theme.Material.NoActionBar" >

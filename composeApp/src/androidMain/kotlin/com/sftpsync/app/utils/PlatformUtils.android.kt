@@ -1,7 +1,14 @@
 package com.sftpsync.app.utils
 
+import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.widget.Toast
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,6 +22,30 @@ import kotlinx.coroutines.withContext
  */
 object AndroidContext {
     lateinit var context: Context
+}
+
+/**
+ * Bridge between MainActivity's ActivityResultLauncher and the suspend pickFolder function.
+ * MainActivity registers the launcher; PlatformUtils.android calls it via this singleton.
+ */
+object AndroidFolderPicker {
+    var launcher: androidx.activity.result.ActivityResultLauncher<android.net.Uri?>? = null
+    private var pending: CompletableDeferred<Uri?>? = null
+
+    /** Called by MainActivity when SAF picker returns a result. */
+    fun onResult(uri: Uri?, contentResolver: ContentResolver) {
+        pending?.complete(uri)
+        pending = null
+    }
+
+    /** Launches the SAF folder tree picker and suspends until the user picks or cancels. */
+    suspend fun pick(initialUri: Uri? = null): Uri? {
+        val currentLauncher = launcher ?: return null
+        val deferred = CompletableDeferred<Uri?>()
+        pending = deferred
+        currentLauncher.launch(initialUri)
+        return deferred.await()
+    }
 }
 
 actual fun getPlatformName(): String = "Android"
@@ -78,9 +109,120 @@ actual fun openFileInSystemViewer(path: String) {
 }
 
 actual suspend fun pickFolder(initialPath: String?): String? {
-    // For Android, we allow direct text path input with modern UI preset shortcuts
-    // which is much more reliable and performant than SAF (Storage Access Framework)
-    return null
+    return try {
+        // Build initial URI hint from path if provided
+        val initialUri: Uri? = if (!initialPath.isNullOrEmpty()) {
+            val file = java.io.File(initialPath)
+            if (file.exists()) {
+                // Try to build a SAF URI hint for the initial directory
+                try {
+                    Uri.fromFile(file)
+                } catch (e: Exception) { null }
+            } else null
+        } else null
+
+        val resultUri = AndroidFolderPicker.pick(initialUri) ?: return null
+
+        // Persist permission so we can access across restarts
+        try {
+            AndroidContext.context.contentResolver.takePersistableUriPermission(
+                resultUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        } catch (e: Exception) {
+            // Not all URIs support persistable permissions — continue anyway
+        }
+
+        // Convert SAF tree URI → absolute filesystem path
+        uriToAbsolutePath(resultUri, AndroidContext.context)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * Converts a SAF content:// tree URI into an absolute filesystem path where possible.
+ *
+ * Handles three URI authorities:
+ *  - primary internal storage  (com.android.externalstorage.documents, "primary")
+ *  - SD card / adoptable storage (com.android.externalstorage.documents, volume ID)
+ *  - Downloads provider
+ */
+private fun uriToAbsolutePath(uri: Uri, context: Context): String? {
+    // Normalize tree URI → document URI
+    val docUri = DocumentsContract.buildDocumentUriUsingTree(
+        uri, DocumentsContract.getTreeDocumentId(uri)
+    )
+
+    val authority = docUri.authority ?: return null
+    val docId = DocumentsContract.getDocumentId(docUri)
+
+    return when {
+        // ── Internal / SD card storage ──────────────────────────
+        authority == "com.android.externalstorage.documents" -> {
+            val parts = docId.split(":")
+            val volumeId = parts.getOrNull(0) ?: return null
+            val relativePath = parts.getOrNull(1) ?: ""
+
+            if (volumeId.equals("primary", ignoreCase = true)) {
+                // Internal storage
+                val base = Environment.getExternalStorageDirectory().absolutePath
+                if (relativePath.isEmpty()) base else "$base/$relativePath"
+            } else {
+                // SD card — locate the volume root
+                val storageRoot = findSdCardRoot(context, volumeId)
+                if (storageRoot != null) {
+                    if (relativePath.isEmpty()) storageRoot else "$storageRoot/$relativePath"
+                } else {
+                    // Fallback: /storage/<volumeId>
+                    val base = "/storage/$volumeId"
+                    if (relativePath.isEmpty()) base else "$base/$relativePath"
+                }
+            }
+        }
+
+        // ── Downloads provider ───────────────────────────────────
+        authority == "com.android.providers.downloads.documents" -> {
+            Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            ).absolutePath
+        }
+
+        // ── Last resort: file:// URIs ────────────────────────────
+        uri.scheme == "file" -> uri.path
+
+        else -> null
+    }
+}
+
+/**
+ * Searches mounted external storage volumes for a path matching the given volume ID.
+ */
+private fun findSdCardRoot(context: Context, volumeId: String): String? {
+    return try {
+        val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as android.os.storage.StorageManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            storageManager.storageVolumes
+                .firstOrNull { vol ->
+                    val uuid = vol.uuid
+                    uuid != null && (uuid.equals(volumeId, ignoreCase = true) ||
+                            uuid.replace("-", "").equals(volumeId.replace("-", ""), ignoreCase = true))
+                }
+                ?.let { vol ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        vol.directory?.absolutePath
+                    } else {
+                        // Reflection fallback for API 24-29
+                        try {
+                            vol.javaClass.getMethod("getPath").invoke(vol) as? String
+                        } catch (e: Exception) { null }
+                    }
+                }
+        } else null
+    } catch (e: Exception) {
+        null
+    }
 }
 
 actual fun writeTextFile(fileName: String, content: String) {
