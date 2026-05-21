@@ -1,0 +1,371 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:2:1-37:12
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:2:1-37:12
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:2:1-37:12
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:2:1-37:12
+MERGED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:2:1-16:12
+MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\drone\.gradle\caches\transforms-3\14fc003ecb1aeff51da03103f1fb4a08\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\drone\.gradle\caches\transforms-3\fd7b5daf9667632f74287bae8ef91858\transformed\appcompat-1.6.1\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\drone\.gradle\caches\transforms-3\5e4577ad2b42eb1cdfb18aa414b406f2\transformed\fragment-1.3.6\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.activity:activity:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\79a34ae095092630e67ed642628df2be\transformed\jetified-activity-1.8.2\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.compose.material3:material3-android:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\2b1408664648256d55d4cac8a3205f1f\transformed\jetified-material3-release\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.compose.animation:animation-core-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a03f8a7b09ceb327f8ef9fefef794e9a\transformed\jetified-animation-core-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.material:material-ripple-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\6d24152c15432465d69b5a7263daaa8e\transformed\jetified-material-ripple-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.animation:animation-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\307ef0a305769322fde2c1d3a74bca7a\transformed\jetified-animation-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.foundation:foundation-layout-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a95a97efb8ed526149dd6507bbc140dd\transformed\jetified-foundation-layout-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.foundation:foundation-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\0a5c0e47da99749eb4206a4a3d93068b\transformed\jetified-foundation-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.ui:ui-unit-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a93a66f0aa944e4b05219226113caecb\transformed\jetified-ui-unit-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.ui:ui-geometry-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c5314199b506c3f9736a351794027c24\transformed\jetified-ui-geometry-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.ui:ui-graphics-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c1ca2088775d0757cded83c8db3e01d6\transformed\jetified-ui-graphics-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.ui:ui-util-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\ac5ea91df7471354c44ee994badaf5a3\transformed\jetified-ui-util-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.ui:ui-text-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\b70e85d10dda620f3b362c2e8b14daff\transformed\jetified-ui-text-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.material:material-icons-extended-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c2deb43d8025c5135f5584d493973c83\transformed\jetified-material-icons-extended-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.material:material-icons-core-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\891f1789baf8b173c70971149375bf5a\transformed\jetified-material-icons-core-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.ui:ui-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\03da87a457e71a21a9342b79d5a13a31\transformed\jetified-ui-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.activity:activity-ktx:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\d456690c4a41be088a94217b11d1bb80\transformed\jetified-activity-ktx-1.8.2\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.activity:activity-compose:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\539f418d87e75a2a3a734b74220b56fb\transformed\jetified-activity-compose-1.8.2\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.runtime:runtime-saveable-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\ff08ad3939e771f3dbbea2a3d5faebf0\transformed\jetified-runtime-saveable-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\fb9d248eb3626ec2bd075205725a2dc8\transformed\drawerlayout-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\drone\.gradle\caches\transforms-3\332134e71bbaced5401dee93362b6a5e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\drone\.gradle\caches\transforms-3\b53a330eb873185bc98fd2ecd5cbd2bc\transformed\vectordrawable-1.1.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\3d11a887be766c48d50191d9e1f88c39\transformed\viewpager-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.customview:customview:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\7ef7c8b7347e5d8b1d0dce6ece7cbed4\transformed\customview-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.loader:loader:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\3ee826870c9fa83fb4fbf31ef6368b53\transformed\loader-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\94db63ec819b77f0ebbfed2964c42f2b\transformed\jetified-emoji2-views-helper-1.3.0\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:17:1-35:12
+MERGED from [androidx.autofill:autofill:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\7c0dea901cd1ca09b7316e1876019f38\transformed\jetified-autofill-1.0.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\4df30d6821c547e79cfbf2d344f686da\transformed\jetified-customview-poolingcontainer-1.0.0\AndroidManifest.xml:17:1-23:12
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\drone\.gradle\caches\transforms-3\527522d82334689bb5aa61b6cbd78a69\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\drone\.gradle\caches\transforms-3\95e3f2b428bc91fbed65426abce0b3ab\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\dea4122078dc713490bf51ea59b8caf9\transformed\jetified-lifecycle-runtime-ktx-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\766a4aae4be75811abf350e00cbb384e\transformed\jetified-lifecycle-livedata-core-ktx-2.8.5\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\e6d030c426111bf8e0215349b3e861ef\transformed\jetified-lifecycle-viewmodel-ktx-2.8.5\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:17:1-35:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\5f90d4ec7ed45a02dc097f517fcb5f11\transformed\lifecycle-livedata-core-2.8.5\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\427d0dcc265520b1c99ef4b5e78a6175\transformed\lifecycle-livedata-2.8.5\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\93dd5765e4794df5044d3de3548d8de0\transformed\lifecycle-viewmodel-2.8.5\AndroidManifest.xml:2:1-5:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\c96fb7784a7fdba17b52a1a32dc45546\transformed\jetified-lifecycle-viewmodel-release\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\17ad1d903a32f3f6e5caffab473b12b1\transformed\jetified-lifecycle-viewmodel-savedstate-2.8.5\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.core:core-ktx:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\efb9b9d329c63feb700187a15efdf594\transformed\jetified-core-ktx-1.13.1\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.graphics:graphics-path:1.0.1] C:\Users\drone\.gradle\caches\transforms-3\0e1aeedaeb433438c5613c5a70ba3236\transformed\jetified-graphics-path-1.0.1\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:17:1-30:12
+MERGED from [androidx.lifecycle:lifecycle-runtime-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0aefc15542cd5b03f560a384a71a292e\transformed\jetified-lifecycle-runtime-release\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime-compose-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\25d1e3addbd04dd1e113d77b8bf1be14\transformed\jetified-lifecycle-runtime-compose-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.compose.runtime:runtime-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\19f6be28c89568b6c2be4de0dc454839\transformed\jetified-runtime-release\AndroidManifest.xml:2:1-7:12
+MERGED from [org.jetbrains.compose.components:components-ui-tooling-preview-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\44b5cb64a6e5cfe4b1b8bfa9c54cd799\transformed\jetified-library-release\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.annotation:annotation-experimental:1.4.1] C:\Users\drone\.gradle\caches\transforms-3\4a36a5587c915d67c4150e29e9f87359\transformed\jetified-annotation-experimental-1.4.1\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\8aa9b00fde076e452687430b7ad4fabc\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\70bd13e145975ae1509868229c0b4521\transformed\cursoradapter-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:17:1-55:12
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:17:1-33:12
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\b32ee27ee2880e7a3177ced4da0e9ed5\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\5f410533be64a2742d88de4a1ca58266\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\drone\.gradle\caches\transforms-3\4af556e7243de0d2e419427a251e657b\transformed\core-runtime-2.2.0\AndroidManifest.xml:17:1-22:12
+	package
+		INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+	android:versionName
+		INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+	xmlns:tools
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:3:5-51
+	android:versionCode
+		INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+	xmlns:android
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:2:11-69
+uses-permission#android.permission.INTERNET
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:6:5-67
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:6:22-64
+uses-permission#android.permission.READ_EXTERNAL_STORAGE
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:9:5-80
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:9:22-77
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:10:5-81
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:10:22-78
+uses-permission#android.permission.MANAGE_EXTERNAL_STORAGE
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:13:5-14:40
+	tools:ignore
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:14:9-37
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:13:22-79
+application
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:16:5-36:19
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:16:5-36:19
+MERGED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:7:5-14:19
+MERGED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:7:5-14:19
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:28:5-89
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\8aa9b00fde076e452687430b7ad4fabc\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\8aa9b00fde076e452687430b7ad4fabc\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:23:5-53:19
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:23:5-53:19
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
+	android:extractNativeLibs
+		INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+	android:requestLegacyExternalStorage
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:23:9-52
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+	android:supportsRtl
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:21:9-35
+	android:label
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:19:9-34
+	android:roundIcon
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:20:9-61
+	android:icon
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:18:9-56
+	android:allowBackup
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:17:9-35
+	android:theme
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:22:9-66
+activity#com.sftpsync.app.MainActivity
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:25:9-34:20
+	android:exported
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:27:13-36
+	android:configChanges
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:29:13-74
+	android:theme
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:28:13-70
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:26:13-57
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:30:13-33:29
+action#android.intent.action.MAIN
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:31:17-69
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:31:25-66
+category#android.intent.category.LAUNCHER
+ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:32:17-77
+	android:name
+		ADDED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml:32:27-74
+uses-sdk
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+MERGED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:5:5-44
+MERGED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\drone\.gradle\caches\transforms-3\14fc003ecb1aeff51da03103f1fb4a08\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\drone\.gradle\caches\transforms-3\14fc003ecb1aeff51da03103f1fb4a08\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\drone\.gradle\caches\transforms-3\fd7b5daf9667632f74287bae8ef91858\transformed\appcompat-1.6.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\drone\.gradle\caches\transforms-3\fd7b5daf9667632f74287bae8ef91858\transformed\appcompat-1.6.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\drone\.gradle\caches\transforms-3\5e4577ad2b42eb1cdfb18aa414b406f2\transformed\fragment-1.3.6\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.fragment:fragment:1.3.6] C:\Users\drone\.gradle\caches\transforms-3\5e4577ad2b42eb1cdfb18aa414b406f2\transformed\fragment-1.3.6\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.activity:activity:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\79a34ae095092630e67ed642628df2be\transformed\jetified-activity-1.8.2\AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\79a34ae095092630e67ed642628df2be\transformed\jetified-activity-1.8.2\AndroidManifest.xml:20:5-44
+MERGED from [androidx.compose.material3:material3-android:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\2b1408664648256d55d4cac8a3205f1f\transformed\jetified-material3-release\AndroidManifest.xml:20:5-44
+MERGED from [androidx.compose.material3:material3-android:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\2b1408664648256d55d4cac8a3205f1f\transformed\jetified-material3-release\AndroidManifest.xml:20:5-44
+MERGED from [androidx.compose.animation:animation-core-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a03f8a7b09ceb327f8ef9fefef794e9a\transformed\jetified-animation-core-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.animation:animation-core-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a03f8a7b09ceb327f8ef9fefef794e9a\transformed\jetified-animation-core-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.material:material-ripple-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\6d24152c15432465d69b5a7263daaa8e\transformed\jetified-material-ripple-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.material:material-ripple-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\6d24152c15432465d69b5a7263daaa8e\transformed\jetified-material-ripple-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.animation:animation-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\307ef0a305769322fde2c1d3a74bca7a\transformed\jetified-animation-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.animation:animation-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\307ef0a305769322fde2c1d3a74bca7a\transformed\jetified-animation-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.foundation:foundation-layout-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a95a97efb8ed526149dd6507bbc140dd\transformed\jetified-foundation-layout-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.foundation:foundation-layout-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a95a97efb8ed526149dd6507bbc140dd\transformed\jetified-foundation-layout-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.foundation:foundation-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\0a5c0e47da99749eb4206a4a3d93068b\transformed\jetified-foundation-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.foundation:foundation-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\0a5c0e47da99749eb4206a4a3d93068b\transformed\jetified-foundation-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-unit-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a93a66f0aa944e4b05219226113caecb\transformed\jetified-ui-unit-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-unit-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\a93a66f0aa944e4b05219226113caecb\transformed\jetified-ui-unit-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-geometry-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c5314199b506c3f9736a351794027c24\transformed\jetified-ui-geometry-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-geometry-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c5314199b506c3f9736a351794027c24\transformed\jetified-ui-geometry-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-graphics-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c1ca2088775d0757cded83c8db3e01d6\transformed\jetified-ui-graphics-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-graphics-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c1ca2088775d0757cded83c8db3e01d6\transformed\jetified-ui-graphics-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-util-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\ac5ea91df7471354c44ee994badaf5a3\transformed\jetified-ui-util-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-util-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\ac5ea91df7471354c44ee994badaf5a3\transformed\jetified-ui-util-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-text-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\b70e85d10dda620f3b362c2e8b14daff\transformed\jetified-ui-text-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-text-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\b70e85d10dda620f3b362c2e8b14daff\transformed\jetified-ui-text-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.material:material-icons-extended-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c2deb43d8025c5135f5584d493973c83\transformed\jetified-material-icons-extended-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.material:material-icons-extended-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\c2deb43d8025c5135f5584d493973c83\transformed\jetified-material-icons-extended-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.material:material-icons-core-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\891f1789baf8b173c70971149375bf5a\transformed\jetified-material-icons-core-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.material:material-icons-core-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\891f1789baf8b173c70971149375bf5a\transformed\jetified-material-icons-core-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\03da87a457e71a21a9342b79d5a13a31\transformed\jetified-ui-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.ui:ui-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\03da87a457e71a21a9342b79d5a13a31\transformed\jetified-ui-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.activity:activity-ktx:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\d456690c4a41be088a94217b11d1bb80\transformed\jetified-activity-ktx-1.8.2\AndroidManifest.xml:5:5-44
+MERGED from [androidx.activity:activity-ktx:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\d456690c4a41be088a94217b11d1bb80\transformed\jetified-activity-ktx-1.8.2\AndroidManifest.xml:5:5-44
+MERGED from [androidx.activity:activity-compose:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\539f418d87e75a2a3a734b74220b56fb\transformed\jetified-activity-compose-1.8.2\AndroidManifest.xml:5:5-44
+MERGED from [androidx.activity:activity-compose:1.8.2] C:\Users\drone\.gradle\caches\transforms-3\539f418d87e75a2a3a734b74220b56fb\transformed\jetified-activity-compose-1.8.2\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.runtime:runtime-saveable-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\ff08ad3939e771f3dbbea2a3d5faebf0\transformed\jetified-runtime-saveable-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.runtime:runtime-saveable-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\ff08ad3939e771f3dbbea2a3d5faebf0\transformed\jetified-runtime-saveable-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\fb9d248eb3626ec2bd075205725a2dc8\transformed\drawerlayout-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\fb9d248eb3626ec2bd075205725a2dc8\transformed\drawerlayout-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\drone\.gradle\caches\transforms-3\332134e71bbaced5401dee93362b6a5e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] C:\Users\drone\.gradle\caches\transforms-3\332134e71bbaced5401dee93362b6a5e\transformed\vectordrawable-animated-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\drone\.gradle\caches\transforms-3\b53a330eb873185bc98fd2ecd5cbd2bc\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] C:\Users\drone\.gradle\caches\transforms-3\b53a330eb873185bc98fd2ecd5cbd2bc\transformed\vectordrawable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\3d11a887be766c48d50191d9e1f88c39\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.viewpager:viewpager:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\3d11a887be766c48d50191d9e1f88c39\transformed\viewpager-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\7ef7c8b7347e5d8b1d0dce6ece7cbed4\transformed\customview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\7ef7c8b7347e5d8b1d0dce6ece7cbed4\transformed\customview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\3ee826870c9fa83fb4fbf31ef6368b53\transformed\loader-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\3ee826870c9fa83fb4fbf31ef6368b53\transformed\loader-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\94db63ec819b77f0ebbfed2964c42f2b\transformed\jetified-emoji2-views-helper-1.3.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\94db63ec819b77f0ebbfed2964c42f2b\transformed\jetified-emoji2-views-helper-1.3.0\AndroidManifest.xml:5:5-44
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:21:5-44
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:21:5-44
+MERGED from [androidx.autofill:autofill:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\7c0dea901cd1ca09b7316e1876019f38\transformed\jetified-autofill-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.autofill:autofill:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\7c0dea901cd1ca09b7316e1876019f38\transformed\jetified-autofill-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\4df30d6821c547e79cfbf2d344f686da\transformed\jetified-customview-poolingcontainer-1.0.0\AndroidManifest.xml:20:5-21:38
+MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\4df30d6821c547e79cfbf2d344f686da\transformed\jetified-customview-poolingcontainer-1.0.0\AndroidManifest.xml:20:5-21:38
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\drone\.gradle\caches\transforms-3\527522d82334689bb5aa61b6cbd78a69\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\drone\.gradle\caches\transforms-3\527522d82334689bb5aa61b6cbd78a69\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\drone\.gradle\caches\transforms-3\95e3f2b428bc91fbed65426abce0b3ab\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\drone\.gradle\caches\transforms-3\95e3f2b428bc91fbed65426abce0b3ab\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\dea4122078dc713490bf51ea59b8caf9\transformed\jetified-lifecycle-runtime-ktx-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\dea4122078dc713490bf51ea59b8caf9\transformed\jetified-lifecycle-runtime-ktx-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\766a4aae4be75811abf350e00cbb384e\transformed\jetified-lifecycle-livedata-core-ktx-2.8.5\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\766a4aae4be75811abf350e00cbb384e\transformed\jetified-lifecycle-livedata-core-ktx-2.8.5\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\e6d030c426111bf8e0215349b3e861ef\transformed\jetified-lifecycle-viewmodel-ktx-2.8.5\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\e6d030c426111bf8e0215349b3e861ef\transformed\jetified-lifecycle-viewmodel-ktx-2.8.5\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:21:5-44
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:21:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\5f90d4ec7ed45a02dc097f517fcb5f11\transformed\lifecycle-livedata-core-2.8.5\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\5f90d4ec7ed45a02dc097f517fcb5f11\transformed\lifecycle-livedata-core-2.8.5\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\427d0dcc265520b1c99ef4b5e78a6175\transformed\lifecycle-livedata-2.8.5\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\427d0dcc265520b1c99ef4b5e78a6175\transformed\lifecycle-livedata-2.8.5\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\93dd5765e4794df5044d3de3548d8de0\transformed\lifecycle-viewmodel-2.8.5\AndroidManifest.xml:4:5-43
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\93dd5765e4794df5044d3de3548d8de0\transformed\lifecycle-viewmodel-2.8.5\AndroidManifest.xml:4:5-43
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\c96fb7784a7fdba17b52a1a32dc45546\transformed\jetified-lifecycle-viewmodel-release\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\c96fb7784a7fdba17b52a1a32dc45546\transformed\jetified-lifecycle-viewmodel-release\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\17ad1d903a32f3f6e5caffab473b12b1\transformed\jetified-lifecycle-viewmodel-savedstate-2.8.5\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\17ad1d903a32f3f6e5caffab473b12b1\transformed\jetified-lifecycle-viewmodel-savedstate-2.8.5\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core-ktx:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\efb9b9d329c63feb700187a15efdf594\transformed\jetified-core-ktx-1.13.1\AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-ktx:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\efb9b9d329c63feb700187a15efdf594\transformed\jetified-core-ktx-1.13.1\AndroidManifest.xml:5:5-44
+MERGED from [androidx.graphics:graphics-path:1.0.1] C:\Users\drone\.gradle\caches\transforms-3\0e1aeedaeb433438c5613c5a70ba3236\transformed\jetified-graphics-path-1.0.1\AndroidManifest.xml:5:5-44
+MERGED from [androidx.graphics:graphics-path:1.0.1] C:\Users\drone\.gradle\caches\transforms-3\0e1aeedaeb433438c5613c5a70ba3236\transformed\jetified-graphics-path-1.0.1\AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0aefc15542cd5b03f560a384a71a292e\transformed\jetified-lifecycle-runtime-release\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0aefc15542cd5b03f560a384a71a292e\transformed\jetified-lifecycle-runtime-release\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-compose-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\25d1e3addbd04dd1e113d77b8bf1be14\transformed\jetified-lifecycle-runtime-compose-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-compose-android:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\25d1e3addbd04dd1e113d77b8bf1be14\transformed\jetified-lifecycle-runtime-compose-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.runtime:runtime-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\19f6be28c89568b6c2be4de0dc454839\transformed\jetified-runtime-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.compose.runtime:runtime-android:1.7.1] C:\Users\drone\.gradle\caches\transforms-3\19f6be28c89568b6c2be4de0dc454839\transformed\jetified-runtime-release\AndroidManifest.xml:5:5-44
+MERGED from [org.jetbrains.compose.components:components-ui-tooling-preview-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\44b5cb64a6e5cfe4b1b8bfa9c54cd799\transformed\jetified-library-release\AndroidManifest.xml:5:5-44
+MERGED from [org.jetbrains.compose.components:components-ui-tooling-preview-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\44b5cb64a6e5cfe4b1b8bfa9c54cd799\transformed\jetified-library-release\AndroidManifest.xml:5:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.4.1] C:\Users\drone\.gradle\caches\transforms-3\4a36a5587c915d67c4150e29e9f87359\transformed\jetified-annotation-experimental-1.4.1\AndroidManifest.xml:5:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.4.1] C:\Users\drone\.gradle\caches\transforms-3\4a36a5587c915d67c4150e29e9f87359\transformed\jetified-annotation-experimental-1.4.1\AndroidManifest.xml:5:5-44
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\8aa9b00fde076e452687430b7ad4fabc\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\8aa9b00fde076e452687430b7ad4fabc\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\70bd13e145975ae1509868229c0b4521\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\70bd13e145975ae1509868229c0b4521\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:21:5-44
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:21:5-44
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\b32ee27ee2880e7a3177ced4da0e9ed5\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\b32ee27ee2880e7a3177ced4da0e9ed5\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\5f410533be64a2742d88de4a1ca58266\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\drone\.gradle\caches\transforms-3\5f410533be64a2742d88de4a1ca58266\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\drone\.gradle\caches\transforms-3\4af556e7243de0d2e419427a251e657b\transformed\core-runtime-2.2.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\drone\.gradle\caches\transforms-3\4af556e7243de0d2e419427a251e657b\transformed\core-runtime-2.2.0\AndroidManifest.xml:20:5-44
+	android:targetSdkVersion
+		INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\drone\gits\sftp_sync\composeApp\src\androidMain\AndroidManifest.xml
+provider#org.jetbrains.compose.resources.AndroidContextProvider
+ADDED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:8:9-13:20
+	android:enabled
+		ADDED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:11:13-35
+	android:authorities
+		ADDED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:10:13-84
+	android:exported
+		ADDED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:12:13-37
+	android:name
+		ADDED from [org.jetbrains.compose.components:components-resources-android:1.7.0] C:\Users\drone\.gradle\caches\transforms-3\29ff9a39b173b9d7b86f2e90e63e4738\transformed\jetified-library-release\AndroidManifest.xml:9:13-82
+provider#androidx.startup.InitializationProvider
+ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
+MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\drone\.gradle\caches\transforms-3\91e4061a7a1df7d6998a310820cc7c26\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:26:9-30:34
+	tools:node
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:28:13-31
+	android:authorities
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:26:13-68
+	android:exported
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:27:13-37
+	android:name
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:25:13-67
+meta-data#androidx.emoji2.text.EmojiCompatInitializer
+ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\drone\.gradle\caches\transforms-3\d8bfb8b1d2189caa4b89f6788c664077\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:30:17-75
+meta-data#androidx.lifecycle.ProcessLifecycleInitializer
+ADDED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.lifecycle:lifecycle-process:2.8.5] C:\Users\drone\.gradle\caches\transforms-3\0d97b3674ec1e9c36928af01a65830ff\transformed\jetified-lifecycle-process-2.8.5\AndroidManifest.xml:30:17-78
+permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+permission#com.sftpsync.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+uses-permission#com.sftpsync.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.13.1] C:\Users\drone\.gradle\caches\transforms-3\97442f229c436e350e76521ee6036d89\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+meta-data#androidx.profileinstaller.ProfileInstallerInitializer
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+receiver#androidx.profileinstaller.ProfileInstallReceiver
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+	android:enabled
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+	android:exported
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+	android:permission
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+	android:directBootAware
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+intent-filter#action:name:androidx.profileinstaller.action.INSTALL_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+action#androidx.profileinstaller.action.INSTALL_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+intent-filter#action:name:androidx.profileinstaller.action.SKIP_FILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+action#androidx.profileinstaller.action.SKIP_FILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+intent-filter#action:name:androidx.profileinstaller.action.SAVE_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+action#androidx.profileinstaller.action.SAVE_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+intent-filter#action:name:androidx.profileinstaller.action.BENCHMARK_OPERATION
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+action#androidx.profileinstaller.action.BENCHMARK_OPERATION
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\drone\.gradle\caches\transforms-3\44b5f007c7ab9d308fc821df1d5ffb11\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
