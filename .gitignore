@@ -1,0 +1,86 @@
+# ─────────────────────────────────────────────────────────────────
+# Kotlin Multiplatform (KMP) + Compose Multiplatform .gitignore
+# Targets: Android, Desktop (JVM/Windows/Linux)
+# ─────────────────────────────────────────────────────────────────
+
+# ───── Gradle ─────────────────────────────────────────────────────
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
+
+# Gradle wrapper signature (allow wrapper jar, ignore others)
+gradle-wrapper.jar
+
+# Kotlin/Gradle daemon
+.kotlin/
+
+# ───── Android ────────────────────────────────────────────────────
+# Local SDK & secrets — never commit these
+local.properties
+*.keystore
+*.jks
+
+# Generated APK / AAB / mapping
+composeApp/build/outputs/
+composeApp/build/intermediates/
+composeApp/build/generated/
+
+# ProGuard
+proguard/
+*.pro.map
+
+# ───── Desktop / JVM ──────────────────────────────────────────────
+# Uber JAR & native distributions
+composeApp/build/compose/
+
+# ───── IntelliJ IDEA / Android Studio ────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+*.eml
+.idea_modules/
+
+# IDE workspace (allow shared run configs)
+.idea/*
+!.idea/runConfigurations/
+
+# ───── OS generated files ─────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ───── Windows ───────────────────────────────────────────────────
+$RECYCLE.BIN/
+
+# ───── App runtime data (generated at runtime, not source) ────────
+# SFTP sync runtime state & logs produced by the app itself
+profiles.json
+logs.json
+sync_state_*.json
+theme.txt
+.sftp-sync-state.json
+.sftp-sync*.tmp
+
+# ───── Secrets & credentials ──────────────────────────────────────
+*.pem
+*.ppk
+id_rsa
+id_ed25519
+*.env
+.env.*
+
+# ───── Misc ───────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+*.orig
+*.patch
+*.rej
