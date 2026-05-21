@@ -74,5 +74,21 @@ expect fun startFileWatcher(
     onChanged: () -> Unit
 ): FileWatcherJob?
 
+/**
+ * Shuts down the entire application process cleanly or forcefully.
+ */
+expect fun exitApplicationProcess()
+
+/**
+ * Instructs the platform to start its background persistent service (if supported).
+ */
+expect fun startPlatformBackgroundService()
+
+/**
+ * Instructs the platform to stop its background persistent service (if supported).
+ */
+expect fun stopPlatformBackgroundService()
+
+
 
 

@@ -7,7 +7,7 @@
 --java-options
 "'-Dcompose.application.resources.dir=$APPDIR\\resources'"
 --main-jar
-"composeApp-desktop-ce33539cd6e63c301e730ec609b5d76.jar"
+"composeApp-desktop-26b97dc9d4d7abe9b218ed8b50b83480.jar"
 --main-class
 "com.sftpsync.app.MainKt"
 --icon

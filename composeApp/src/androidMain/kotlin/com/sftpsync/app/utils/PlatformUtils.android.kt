@@ -254,3 +254,38 @@ actual fun startFileWatcher(
         return null
     }
 }
+
+actual fun exitApplicationProcess() {
+    try {
+        stopPlatformBackgroundService()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    android.os.Process.killProcess(android.os.Process.myPid())
+    java.lang.System.exit(0)
+}
+
+actual fun startPlatformBackgroundService() {
+    try {
+        val context = AndroidContext.context
+        val intent = android.content.Intent(context, Class.forName("com.sftpsync.app.service.SyncForegroundService"))
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+actual fun stopPlatformBackgroundService() {
+    try {
+        val context = AndroidContext.context
+        val intent = android.content.Intent(context, Class.forName("com.sftpsync.app.service.SyncForegroundService"))
+        context.stopService(intent)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+

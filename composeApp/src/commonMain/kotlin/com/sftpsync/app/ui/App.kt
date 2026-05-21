@@ -67,6 +67,7 @@ fun App() {
                             onProfileSelect = { viewModel.selectProfile(it) },
                             onNewProfile = { viewModel.startNewProfile() },
                             onNavigateToLogs = { viewModel.navigateTo(AppScreen.LOGS) },
+                            onNavigateToSettings = { viewModel.navigateTo(AppScreen.SETTINGS) },
                             modifier = Modifier.width(280.dp).fillMaxHeight()
                         )
                         
@@ -122,6 +123,13 @@ fun App() {
                                 titleContentColor = TextWhite
                             ),
                             actions = {
+                                IconButton(onClick = { viewModel.navigateTo(AppScreen.SETTINGS) }) {
+                                    Icon(
+                                        Icons.Filled.Settings,
+                                        contentDescription = "설정",
+                                        tint = if (state.currentScreen == AppScreen.SETTINGS) CyanGlow else TextLight
+                                    )
+                                }
                                 if (state.currentScreen != AppScreen.LOGS) {
                                     IconButton(onClick = { viewModel.navigateTo(AppScreen.LOGS) }) {
                                         Icon(Icons.Filled.History, contentDescription = "히스토리", tint = TextLight)
@@ -181,6 +189,7 @@ fun SidebarPanel(
     onProfileSelect: (SyncProfile) -> Unit,
     onNewProfile: () -> Unit,
     onNavigateToLogs: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -301,6 +310,21 @@ fun SidebarPanel(
             Spacer(modifier = Modifier.width(8.dp))
             Text("전체 동기화 이력", color = TextLight)
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = onNavigateToSettings,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, Slate700),
+            contentPadding = PaddingValues(12.dp)
+        ) {
+            Icon(Icons.Filled.Settings, contentDescription = null, tint = TextLight)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("애플리케이션 설정", color = TextLight)
+        }
     }
 }
 
@@ -328,6 +352,10 @@ fun MainContentPanel(
                 isDesktop = isDesktop
             )
             AppScreen.LOGS -> LogsScreen(
+                state = state,
+                viewModel = viewModel
+            )
+            AppScreen.SETTINGS -> SettingsScreen(
                 state = state,
                 viewModel = viewModel
             )
@@ -1492,6 +1520,197 @@ fun DirectoryApprovalOverlay(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("취소", color = TextLight)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(
+    state: UiState,
+    viewModel: SyncViewModel
+) {
+    var showShutdownDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { viewModel.navigateTo(AppScreen.DASHBOARD) }) {
+                Icon(Icons.Filled.ArrowBack, contentDescription = "대시보드로 돌아가기", tint = TextLight)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "애플리케이션 설정",
+                fontWeight = FontWeight.Bold,
+                color = TextWhite,
+                fontSize = 22.sp
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Slate700)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            "백그라운드 실시간 동기화 정보",
+                            fontWeight = FontWeight.Bold,
+                            color = TextWhite,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        
+                        val isAndroid = getPlatformName() == "Android"
+                        
+                        if (isAndroid) {
+                            Text(
+                                "• Android 환경에서는 자동 동기화 기능이 활성화된 프로필이 1개라도 있는 경우, 앱이 백그라운드로 전환되어도 시스템 알림창에 동기화 상태가 상주하는 포어그라운드 서비스가 실행됩니다.",
+                                color = TextLight,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "• 이 서비스를 통해 로컬 파일의 변경 감지(WatchService) 및 원격 서버 폴링(30초 주기)이 끊김 없이 안정적으로 백그라운드에서 동작합니다.",
+                                color = TextLight,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp
+                            )
+                        } else {
+                            Text(
+                                "• Desktop(Windows/Linux) 환경에서는 동기화 중단을 방지하기 위해 창 닫기 버튼 [X]를 클릭해도 앱이 즉시 종료되지 않고 작업 표시줄의 시스템 트레이 영역으로 자동 최소화됩니다.",
+                                color = TextLight,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "• 트레이 아이콘을 더블 클릭하거나 트레이 우클릭 메뉴를 통해 메인 제어 창을 언제든지 복원할 수 있습니다.",
+                                color = TextLight,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Slate700)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            "애플리케이션 완전 종료",
+                            fontWeight = FontWeight.Bold,
+                            color = ErrorRed,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            "백그라운드에서 백그라운드 서비스 및 트레이 상주를 해제하고, 동기화 프로세스를 즉시 정지한 후 앱을 완전히 안전하게 종료합니다.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(bottom = 20.dp)
+                        )
+
+                        Button(
+                            onClick = { showShutdownDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = ErrorRed.copy(alpha = 0.15f)),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.5.dp, ErrorRed),
+                            contentPadding = PaddingValues(14.dp)
+                        ) {
+                            Icon(Icons.Filled.PowerSettingsNew, contentDescription = null, tint = ErrorRed)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("애플리케이션 즉시 완전 종료", color = ErrorRed, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showShutdownDialog) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.85f))
+                .clickable(enabled = false) {},
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(0.9f).padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Slate800),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(2.dp, ErrorRed)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Filled.PowerSettingsNew,
+                        contentDescription = null,
+                        tint = ErrorRed,
+                        modifier = Modifier.size(72.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "애플리케이션 완전 종료",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "정말로 SFTP BiSync 애플리케이션을 완전히 종료하시겠습니까?\n\n종료 시 백그라운드 포어그라운드 서비스 및 트레이 상주가 모두 해제되고, 모든 실시간 동기화 모니터링이 중단됩니다.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { 
+                                showShutdownDialog = false
+                                exitApplicationProcess()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ErrorRed),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("완전 종료", fontWeight = FontWeight.Bold, color = TextWhite)
+                        }
+                        Button(
+                            onClick = { showShutdownDialog = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("취소", color = TextLight)
+                        }
                     }
                 }
             }

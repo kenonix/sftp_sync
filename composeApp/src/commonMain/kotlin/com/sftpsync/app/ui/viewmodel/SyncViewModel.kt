@@ -32,7 +32,8 @@ data class UiState(
 enum class AppScreen {
     DASHBOARD,
     PROFILE_EDITOR,
-    LOGS
+    LOGS,
+    SETTINGS
 }
 
 class SyncViewModel {
@@ -75,6 +76,9 @@ class SyncViewModel {
             
             // Start watchers for all profiles
             loadedProfiles.forEach { updateAutoSyncWatcher(it) }
+            
+            // Start/stop background service on Android
+            checkAndControlBackgroundService(loadedProfiles)
         }
     }
 
@@ -148,6 +152,9 @@ class SyncViewModel {
             
             // Update watcher for this profile
             updateAutoSyncWatcher(profile)
+            
+            // Update background service on Android
+            checkAndControlBackgroundService(updatedProfiles)
         }
     }
 
@@ -168,6 +175,9 @@ class SyncViewModel {
             // Stop watcher for this profile
             val stoppedProfile = profile.copy(autoSyncEnabled = false)
             updateAutoSyncWatcher(stoppedProfile)
+            
+            // Update background service on Android
+            checkAndControlBackgroundService(updatedProfiles)
         }
     }
 
@@ -312,6 +322,17 @@ class SyncViewModel {
             val profile = state.profiles.firstOrNull { it.id == profileId }
             if (profile != null && profile.autoSyncEnabled && !state.isSyncing) {
                 startSync(profile)
+            }
+        }
+    }
+
+    private fun checkAndControlBackgroundService(profiles: List<SyncProfile>) {
+        if (getPlatformName() == "Android") {
+            val anyAutoSync = profiles.any { it.autoSyncEnabled }
+            if (anyAutoSync) {
+                startPlatformBackgroundService()
+            } else {
+                stopPlatformBackgroundService()
             }
         }
     }

@@ -217,5 +217,18 @@ actual fun startFileWatcher(
     }
 }
 
+actual fun exitApplicationProcess() {
+    System.exit(0)
+}
+
+actual fun startPlatformBackgroundService() {
+    // Desktop has no background service requirements
+}
+
+actual fun stopPlatformBackgroundService() {
+    // Desktop has no background service requirements
+}
+
+
 
 
