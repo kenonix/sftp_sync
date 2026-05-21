@@ -1,2 +1,4 @@
 R_DEF: Internal format may change without notice
 local
+drawable ic_notification
+mipmap ic_launcher

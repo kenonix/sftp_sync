@@ -7,11 +7,11 @@
 --java-options
 "'-Dcompose.application.resources.dir=$APPDIR\\resources'"
 --main-jar
-"composeApp-desktop-26b97dc9d4d7abe9b218ed8b50b83480.jar"
+"composeApp-desktop-bf2b28efbc58195232ffbbce3a2db6c.jar"
 --main-class
 "com.sftpsync.app.MainKt"
 --icon
-"C:\\Users\\drone\\gits\\sftp_sync\\composeApp\\build\\compose\\default-resources\\1.7.0\\default-icon-windows.ico"
+"C:\\Users\\drone\\gits\\sftp_sync\\composeApp\\src\\desktopMain\\resources\\icon.ico"
 --java-options
 "'-Dcompose.application.configure.swing.globals=true'"
 --java-options

@@ -34,10 +34,10 @@
         android:appComponentFactory="androidx.core.app.CoreComponentFactory"
         android:debuggable="true"
         android:extractNativeLibs="false"
-        android:icon="@android:drawable/ic_dialog_info"
+        android:icon="@mipmap/ic_launcher"
         android:label="SFTP Sync"
         android:requestLegacyExternalStorage="true"
-        android:roundIcon="@android:drawable/ic_dialog_info"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar" >
         <activity
