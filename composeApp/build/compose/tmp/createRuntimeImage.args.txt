@@ -11,4 +11,4 @@
 --no-man-pages
 --strip-native-commands
 --output
-"C:\\Users\\drone\\gits\\sftp_sync\\composeApp\\build\\compose\\tmp\\main\\runtime"
+"/home/kenonix/gits/sftp_sync/composeApp/build/compose/tmp/main/runtime"
