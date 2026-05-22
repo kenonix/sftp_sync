@@ -1,0 +1,74 @@
+name: Build & Package Multi-Platform
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  # 1. Build Android APK & Linux RPM/DEB on Ubuntu Runner
+  build-linux-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Packaging Utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm dpkg fakeroot
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Android APK
+        run: ./gradlew :composeApp:assembleDebug
+
+      - name: Build Linux RPM & DEB
+        run: ./gradlew :composeApp:packageDeb :composeApp:packageRpm
+
+      - name: Upload Android & Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-linux-packages
+          path: |
+            composeApp/build/outputs/apk/debug/*.apk
+            composeApp/build/compose/binaries/main/deb/*.deb
+            composeApp/build/compose/binaries/main/rpm/*.rpm
+
+  # 2. Build Windows MSI & EXE Installer on Windows Runner
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build Windows Installers (MSI & EXE)
+        run: ./gradlew :composeApp:packageMsi :composeApp:packageExe
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: |
+            composeApp/build/compose/binaries/main/msi/*.msi
+            composeApp/build/compose/binaries/main/exe/*.exe

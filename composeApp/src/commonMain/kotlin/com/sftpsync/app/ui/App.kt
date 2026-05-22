@@ -37,8 +37,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App() {
-    val viewModel = remember { SyncViewModel() }
+fun App(viewModel: SyncViewModel = remember { SyncViewModel() }) {
     val state = viewModel.state
     val scope = rememberCoroutineScope()
 
