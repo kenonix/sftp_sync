@@ -54,6 +54,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.jsch)
                 implementation(libs.kotlinx.coroutines.swing)
+                implementation("com.dorkbox:SystemTray:4.4")
             }
         }
     }
@@ -80,6 +81,13 @@ android {
 compose.desktop {
     application {
         mainClass = "com.sftpsync.app.MainKt"
+        jvmArgs(
+            "-DSystemTray.FORCE_LINUX_TYPE=2",
+            "-DSystemTray.FORCE_GTK2=false",
+            "-DSystemTray.PREFER_GTK3=true",
+            "-Dswing.gtk.version=3",
+            "-Djdk.gtk.version=3"
+        )
         nativeDistributions {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
