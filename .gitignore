@@ -7,11 +7,12 @@
 .gradle/
 build/
 **/build/
+build-outputs/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/**/build/
 
 # Gradle wrapper signature (allow wrapper jar, ignore others)
-gradle-wrapper.jar
+
 
 # Kotlin/Gradle daemon
 .kotlin/
