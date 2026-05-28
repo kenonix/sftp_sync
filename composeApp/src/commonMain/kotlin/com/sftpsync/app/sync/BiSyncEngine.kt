@@ -32,7 +32,8 @@ object BiSyncEngine {
         localFiles: Map<String, SyncFile>,
         remoteFiles: Map<String, SyncFile>,
         lastState: SyncState,
-        exclusions: List<String>
+        exclusions: List<String>,
+        syncCondition: SyncCondition
     ): List<SyncAction> {
         val actions = mutableListOf<SyncAction>()
         
@@ -56,8 +57,16 @@ object BiSyncEngine {
             when {
                 // 1. Exists in Local, Remote, and Last State
                 local != null && remote != null && meta != null -> {
-                    val localChanged = local.lastModified != meta.lastModifiedLocal || local.size != meta.size
-                    val remoteChanged = remote.lastModified != meta.lastModifiedRemote || remote.size != meta.size
+                    val localChanged = when (syncCondition) {
+                        SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
+                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
+                        SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
+                    }
+                    val remoteChanged = when (syncCondition) {
+                        SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
+                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
+                        SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
+                    }
 
                     when {
                         localChanged && remoteChanged -> {
@@ -102,8 +111,12 @@ object BiSyncEngine {
 
                 // 2. Exists in Local and Remote, but NOT in Last State (both added independently)
                 local != null && remote != null && meta == null -> {
-                    // Check if they are identical by size (quick check)
-                    if (local.size == remote.size) {
+                    val areIdentical = when (syncCondition) {
+                        SyncCondition.TIME_DIFFERENT -> local.lastModified == remote.lastModified
+                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified == remote.lastModified && local.size == remote.size
+                        SyncCondition.SIZE_DIFFERENT -> local.size == remote.size
+                    }
+                    if (areIdentical) {
                         // Consider them in sync, just record in state
                         actions.add(SyncAction(path, SyncActionType.NONE, false))
                     } else {
@@ -121,7 +134,11 @@ object BiSyncEngine {
 
                 // 3. Exists in Local, NOT in Remote, exists in Last State (Remote deleted it)
                 local != null && remote == null && meta != null -> {
-                    val localChanged = local.lastModified != meta.lastModifiedLocal || local.size != meta.size
+                    val localChanged = when (syncCondition) {
+                        SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
+                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
+                        SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
+                    }
                     if (localChanged) {
                         // Remote deleted, Local modified -> Conflict
                         actions.add(SyncAction(
@@ -145,7 +162,11 @@ object BiSyncEngine {
 
                 // 4. NOT in Local, exists in Remote, exists in Last State (Local deleted it)
                 local == null && remote != null && meta != null -> {
-                    val remoteChanged = remote.lastModified != meta.lastModifiedRemote || remote.size != meta.size
+                    val remoteChanged = when (syncCondition) {
+                        SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
+                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
+                        SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
+                    }
                     if (remoteChanged) {
                         // Local deleted, Remote modified -> Conflict
                         actions.add(SyncAction(

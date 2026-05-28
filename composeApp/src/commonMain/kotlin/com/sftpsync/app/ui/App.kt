@@ -621,29 +621,47 @@ fun StatusOverviewCard(profile: SyncProfile, state: UiState) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Extra Settings tags
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Slate700)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    val strategyLabel = when (profile.conflictStrategy) {
-                        ConflictStrategy.NEWER_WINS -> "최근 수정본 우선"
-                        ConflictStrategy.LOCAL_WINS -> "로컬 우선"
-                        ConflictStrategy.REMOTE_WINS -> "원격 우선"
-                        ConflictStrategy.KEEP_BOTH -> "양쪽 모두 보존"
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Slate700)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        val strategyLabel = when (profile.conflictStrategy) {
+                            ConflictStrategy.NEWER_WINS -> "최근 수정본 우선"
+                            ConflictStrategy.LOCAL_WINS -> "로컬 우선"
+                            ConflictStrategy.REMOTE_WINS -> "원격 우선"
+                            ConflictStrategy.KEEP_BOTH -> "양쪽 모두 보존"
+                        }
+                        Text("충돌 정책: $strategyLabel", color = TextLight, fontSize = 11.sp)
                     }
-                    Text("충돌 정책: $strategyLabel", color = TextLight, fontSize = 11.sp)
-                }
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Slate700)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text("예외 규칙: ${profile.exclusions.size}개", color = TextLight, fontSize = 11.sp)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Slate700)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("예외 규칙: ${profile.exclusions.size}개", color = TextLight, fontSize = 11.sp)
+                    }
+                }
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Slate700)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        val condLabel = when (profile.syncCondition) {
+                            SyncCondition.TIME_DIFFERENT -> "시간 다름"
+                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> "시간 & 용량 다름"
+                            SyncCondition.SIZE_DIFFERENT -> "용량 다름"
+                        }
+                        Text("동기화 조건: $condLabel", color = TextLight, fontSize = 11.sp)
+                    }
                 }
             }
         }
@@ -884,6 +902,7 @@ fun ProfileEditorScreen(
     var localPath by remember(profile.id) { mutableStateOf(profile.localPath) }
     var remotePath by remember(profile.id) { mutableStateOf(profile.remotePath) }
     var conflictStrategy by remember(profile.id) { mutableStateOf(profile.conflictStrategy) }
+    var syncCondition by remember(profile.id) { mutableStateOf(profile.syncCondition) }
     var autoSyncEnabled by remember(profile.id) { mutableStateOf(profile.autoSyncEnabled) }
 
     var passwordVisible by remember { mutableStateOf(false) }
@@ -1142,7 +1161,41 @@ fun ProfileEditorScreen(
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("3. 충돌 해결 전략", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
+                    Text("3. 동기화 조건 설정", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
+
+                    // Sync condition choice
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Slate900)
+                    ) {
+                        SyncCondition.values().forEach { cond ->
+                            val isSelected = syncCondition == cond
+                            val label = when (cond) {
+                                SyncCondition.TIME_DIFFERENT -> "시간 다름"
+                                SyncCondition.TIME_AND_SIZE_DIFFERENT -> "시간 & 용량 다름"
+                                SyncCondition.SIZE_DIFFERENT -> "용량 다름"
+                            }
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { syncCondition = cond }
+                                    .background(if (isSelected) Slate700 else Color.Transparent)
+                                    .padding(8.dp)
+                            ) {
+                                Text(label, color = TextLight, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                        }
+                    }
+
+                    val condDesc = when (syncCondition) {
+                        SyncCondition.TIME_DIFFERENT -> "파일 수정 시간이 다르면 동기화 대상으로 판단합니다."
+                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> "수정 시간과 파일 크기가 둘 다 다를 때만 동기화 대상으로 판단합니다."
+                        SyncCondition.SIZE_DIFFERENT -> "수정 시간은 무시하고 파일 크기(용량)만 비교하여 다르면 동기화합니다."
+                    }
+                    Text(condDesc, color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp))
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("4. 충돌 해결 전략", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
 
                     // Conflict strategy choice
                     Row(
@@ -1214,6 +1267,7 @@ fun ProfileEditorScreen(
                         localPath = localPath,
                         remotePath = remotePath,
                         conflictStrategy = conflictStrategy,
+                        syncCondition = syncCondition,
                         autoSyncEnabled = autoSyncEnabled
                     )
 

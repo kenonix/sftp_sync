@@ -146,7 +146,8 @@ class BiSyncEngineRunner(
                 localFiles = localFiles,
                 remoteFiles = remoteFiles,
                 lastState = lastState,
-                exclusions = profile.exclusions
+                exclusions = profile.exclusions,
+                syncCondition = profile.syncCondition
             )
 
             if (pendingActions.isEmpty()) {

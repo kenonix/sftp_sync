@@ -17,6 +17,13 @@ enum class ConflictStrategy {
 }
 
 @Serializable
+enum class SyncCondition {
+    TIME_DIFFERENT,
+    TIME_AND_SIZE_DIFFERENT,
+    SIZE_DIFFERENT
+}
+
+@Serializable
 data class SyncProfile(
     val id: String,
     val name: String,
@@ -31,6 +38,8 @@ data class SyncProfile(
     val remotePath: String,
     val syncIntervalMinutes: Int = 0, // 0 = Manual
     val conflictStrategy: ConflictStrategy = ConflictStrategy.NEWER_WINS,
+    val syncCondition: SyncCondition = SyncCondition.TIME_DIFFERENT,
     val autoSyncEnabled: Boolean = false,
     val exclusions: List<String> = listOf(".git", ".DS_Store", "Thumbs.db", ".sftp-sync-state.json")
 )
+

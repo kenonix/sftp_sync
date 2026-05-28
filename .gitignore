@@ -20,6 +20,7 @@ build-outputs/
 # ───── Android ────────────────────────────────────────────────────
 # Local SDK & secrets — never commit these
 local.properties
+dummy-sdk/
 *.keystore
 *.jks
 
