@@ -1014,6 +1014,35 @@ UI 상태 업데이트
 
 ---
 
+## 📱 Android 백그라운드 실시간 동기화 아키텍처 (API 33+ 대응)
+
+Android 환경에서는 기기가 절전 모드로 진입하거나 메모리가 부족할 때 백그라운드 작업이 운영체제(OS)에 의해 쉽게 종료됩니다. SFTP BiSync는 이러한 제약을 극복하고 100% 신뢰성 있는 백그라운드 실시간 동기화를 위해 다음과 같이 플랫폼 최적화 아키텍처를 도입했습니다.
+
+### 1. UI 생명주기로부터의 완전한 디커플링 (Decoupling)
+* **문제점**: 기존에는 로컬 파일 변경을 감지하고 동기화를 제어하는 스레드가 UI(`SyncViewModel`)에 존재하여, 앱이 백그라운드로 이동해 `MainActivity`가 파괴되면 파일 감시 및 동기화 루프가 모두 소멸하는 한계가 있었습니다.
+* **해결책**:
+  * 동기화 엔진 및 파일 감시 코루틴을 백그라운드 서비스인 **`SyncForegroundService`** 내부로 완전히 강제 이전했습니다.
+  * `SyncViewModel`은 Android 환경인 경우 파일 감시 등록을 건너뛰고 오직 서비스의 실행/정지만을 제어하며, 서비스 스스로 내장 스레드 스코프(`serviceScope`) 상에서 독자적으로 프로필을 로드하고 스케줄을 처리합니다.
+  * 이를 통해 UI가 메모리에서 완전히 정리된 상태에서도 완벽하게 독립적인 백그라운드 실시간 동기화가 유지됩니다.
+
+### 2. Android 네이티브 FileObserver 도입 (재귀식 inotify 바인딩)
+* **문제점**: Java 표준 NIO의 `WatchService`는 Android 외부 공용 저장소(FUSE/sdcardfs 가상 파일 시스템) 환경에서 파일 생성/수정 이벤트가 JVM 레이어로 정상 전달되지 않는 고질적인 문제를 가지고 있었습니다.
+* **해결책**:
+  * 플랫폼 전용 [AndroidRecursiveFileObserver](file:///home/kenonix/gits/sftp_sync/composeApp/src/androidMain/kotlin/com/sftpsync/app/utils/PlatformUtils.android.kt)를 자체 개발하여 사용합니다.
+  * 리눅스 커널 수준의 파일 변경 이벤트인 `inotify` 시스템에 직접 연결된 Android Native **`android.os.FileObserver`**를 활용합니다.
+  * 루트 디렉토리 산하의 모든 하위 디렉토리를 탐색(`walkTopDown()`)하여 각 하위 폴더별로 독립적인 `FileObserver`를 장착하는 재귀적 바인딩을 구현해, 유실 없는 초고속 실시간 파일 감지를 보장합니다.
+
+### 3. 알림(POST_NOTIFICATIONS) 런타임 권한 획득 (Android 13+ 대응)
+* **문제점**: Android 13 이상 기기에서는 알림 표출 권한이 런타임 승인식으로 변경되어, 권한이 승인되지 않으면 백그라운드를 지탱하는 포그라운드 서비스 알림이 차단되어 앱이 OS에 의해 강제 중단되는 위험이 있었습니다.
+* **해결책**:
+  * [MainActivity.kt](file:///home/kenonix/gits/sftp_sync/composeApp/src/androidMain/kotlin/com/sftpsync/app/MainActivity.kt) 시작점에 알림 수신 권한 체크 및 승인 요청 프로세스를 통합하여 포그라운드 동기화 알림의 항시 노출을 확보했습니다.
+
+### 4. 전역 SyncLock 및 백그라운드 폴링 최적화
+* **전역 락(SyncLock)**: 포그라운드 UI 수동 동기화와 백그라운드 감시 시스템의 동기화 태스크가 겹치지 않도록 스레드 세이프 volatile 변수인 [SyncLock](file:///home/kenonix/gits/sftp_sync/composeApp/src/commonMain/kotlin/com/sftpsync/app/utils/SyncLock.kt)을 제공해 레이스 컨디션을 완전 봉쇄합니다.
+* **디바운스(Debouncing)**: 다량의 파일 복사 등 연속적인 변경 발생 시 불필요한 동기화 횟수를 억제하기 위해 3초의 디바운스 시간을 주어 이벤트를 일괄 병합한 뒤 단 한 번만 동기화를 트리거합니다.
+
+---
+
 ## 🔐 보안 고려사항
 
 ### 1. 자격증명 관리

@@ -284,116 +284,94 @@ actual interface FileWatcherJob {
     actual fun cancel()
 }
 
-class AndroidFileWatcherJob(
-    private val watchService: java.nio.file.WatchService,
-    private val scope: CoroutineScope,
-    private val job: Job
+/**
+ * Android 네이티브 [android.os.FileObserver]를 사용하여 디렉토리를 재귀적으로 감시하는 클래스입니다.
+ * 
+ * 기존 Java NIO의 [WatchService]가 Android 외부 저장소(FUSE/sdcardfs) 환경에서
+ * 파일 변경 이벤트를 유실하거나 배터리를 과다 소모하는 한계를 극복하기 위해 설계되었습니다.
+ * 리눅스 커널의 inotify 시스템을 직접 활용하여 신속하고 높은 신뢰성의 파일 감시를 보장합니다.
+ */
+class AndroidRecursiveFileObserver(
+    private val rootPath: String,
+    private val onChanged: () -> Unit
 ) : FileWatcherJob {
-    override fun cancel() {
-        try {
-            watchService.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
+    // 모든 하위 폴더별로 등록할 FileObserver 객체들을 유지하는 리스트입니다.
+    // (GC에 의해 해제되는 것을 방지하기 위해 강한 참조로 수집하여 유지합니다.)
+    private val observers = mutableListOf<android.os.FileObserver>()
+
+    init {
+        // 감시 시작
+        startWatching()
+    }
+
+    /**
+     * 감시 대상 루트 폴더로부터 모든 하위 폴더를 스캔하여 각각 FileObserver를 장착하고 작동시킵니다.
+     */
+    private fun startWatching() {
+        val rootFile = java.io.File(rootPath)
+        // 디렉토리가 존재하지 않거나 디렉토리가 아닌 경우 즉시 반환
+        if (!rootFile.exists() || !rootFile.isDirectory) return
+
+        // 감시할 파일 이벤트 마스크 설정 (생성, 수정, 삭제, 이동)
+        val mask = android.os.FileObserver.CREATE or
+                   android.os.FileObserver.MODIFY or
+                   android.os.FileObserver.DELETE or
+                   android.os.FileObserver.MOVED_TO or
+                   android.os.FileObserver.MOVED_FROM
+
+        // Kotlin 표준 라이브러리의 walkTopDown()을 활용하여 하위 폴더들을 재귀적으로 스캔
+        rootFile.walkTopDown().forEach { file ->
+            if (file.isDirectory) {
+                val dirName = file.name
+                // 대용량 개발용 폴더나 형상관리 폴더는 모니터링 대상에서 배제하여 불필요한 이벤트 유발 차단
+                if (dirName != ".git" && dirName != "node_modules" && dirName != ".gradle") {
+                    try {
+                        // API 26-28 하위 호환성을 위해 문자열 경로 생성자를 활용 (DEPRECATION 경고 무시)
+                        val observer = @Suppress("DEPRECATION") object : android.os.FileObserver(file.absolutePath, mask) {
+                            override fun onEvent(event: Int, path: String?) {
+                                if (path != null) {
+                                    // 내부 동기화 상태 파일이나 시스템이 생성하는 불필요한 메타데이터 파일 무시
+                                    if (path == ".sftp-sync-state.json" || path.startsWith(".sftp-sync") || path == ".git" || path == "Thumbs.db" || path == ".DS_Store") {
+                                        return
+                                    }
+                                }
+                                // 파일 시스템 변경 감지 시 콜백을 실행하여 백그라운드 동기화 트리거
+                                onChanged()
+                            }
+                        }
+                        observer.startWatching()
+                        observers.add(observer)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
         }
-        job.cancel()
+    }
+
+    /**
+     * 모든 하위 디렉토리에 걸려있던 파일 감시 동작을 멈추고 메모리를 정리합니다.
+     */
+    override fun cancel() {
+        observers.forEach { it.stopWatching() }
+        observers.clear()
     }
 }
 
+/**
+ * 플랫폼별 파일 시스템 변경 감시 라이프사이클을 생성하는 [startFileWatcher] 실제 구현체입니다.
+ */
 actual fun startFileWatcher(
     profileId: String,
     localPath: String,
     onChanged: () -> Unit
 ): FileWatcherJob? {
-    try {
-        val rootPath = java.nio.file.Paths.get(localPath)
-        if (!java.nio.file.Files.exists(rootPath) || !java.nio.file.Files.isDirectory(rootPath)) {
-            return null
-        }
-
-        val watchService = java.nio.file.FileSystems.getDefault().newWatchService()
-        val keys = java.util.concurrent.ConcurrentHashMap<java.nio.file.WatchKey, java.nio.file.Path>()
-
-        fun registerAll(start: java.nio.file.Path) {
-            java.nio.file.Files.walkFileTree(start, object : java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
-                override fun preVisitDirectory(dir: java.nio.file.Path, attrs: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
-                    val dirName = dir.fileName?.toString() ?: ""
-                    if (dirName == ".git" || dirName == "node_modules" || dirName == ".gradle") {
-                        return java.nio.file.FileVisitResult.SKIP_SUBTREE
-                    }
-                    try {
-                        val key = dir.register(
-                            watchService,
-                            java.nio.file.StandardWatchEventKinds.ENTRY_CREATE,
-                            java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY,
-                            java.nio.file.StandardWatchEventKinds.ENTRY_DELETE
-                        )
-                        keys[key] = dir
-                    } catch (e: Exception) {
-                        // Ignore failures on locked subdirs
-                    }
-                    return java.nio.file.FileVisitResult.CONTINUE
-                }
-            })
-        }
-
-        registerAll(rootPath)
-
-        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        val job = scope.launch {
-            try {
-                while (isActive) {
-                    val key = watchService.take() ?: break
-                    val dir = keys[key] ?: continue
-
-                    var hasValidChanges = false
-                    for (event in key.pollEvents()) {
-                        val kind = event.kind()
-                        if (kind == java.nio.file.StandardWatchEventKinds.OVERFLOW) continue
-
-                        val context = event.context() as? java.nio.file.Path ?: continue
-                        val child = dir.resolve(context)
-                        val fileName = child.fileName.toString()
-
-                        // Ignore state files and common noise to avoid infinite loops
-                        if (fileName == ".sftp-sync-state.json" || fileName.startsWith(".sftp-sync") || fileName == ".git" || fileName == "Thumbs.db" || fileName == ".DS_Store") {
-                            continue
-                        }
-
-                        hasValidChanges = true
-
-                        // Recursively monitor dynamically created subdirectories
-                        if (kind == java.nio.file.StandardWatchEventKinds.ENTRY_CREATE) {
-                            if (java.nio.file.Files.isDirectory(child, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-                                registerAll(child)
-                            }
-                        }
-                    }
-
-                    val valid = key.reset()
-                    if (!valid) {
-                        keys.remove(key)
-                        if (keys.isEmpty()) {
-                            break
-                        }
-                    }
-
-                    if (hasValidChanges) {
-                        withContext(Dispatchers.Main) {
-                            onChanged()
-                        }
-                    }
-                }
-            } catch (e: java.nio.file.ClosedWatchServiceException) {
-                // Ignore closing exception
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        return AndroidFileWatcherJob(watchService, scope, job)
+    return try {
+        // Android 환경에 완벽히 호환되는 재귀형 네이티브 FileObserver 생성 후 반환
+        AndroidRecursiveFileObserver(localPath, onChanged)
     } catch (e: Exception) {
         e.printStackTrace()
-        return null
+        null
     }
 }
 

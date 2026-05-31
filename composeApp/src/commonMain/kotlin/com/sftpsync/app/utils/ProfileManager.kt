@@ -3,6 +3,7 @@ package com.sftpsync.app.utils
 import com.sftpsync.app.models.SyncLog
 import com.sftpsync.app.models.SyncProfile
 import com.sftpsync.app.models.SyncState
+import com.sftpsync.app.models.GitSyncState
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -16,6 +17,7 @@ object ProfileManager {
     private const val PROFILES_FILE = "profiles.json"
     private const val LOGS_FILE = "logs.json"
     private const val STATE_FILE_PREFIX = "sync_state_"
+    private const val GIT_STATE_FILE_PREFIX = "git_sync_state_"
 
     fun loadProfiles(): List<SyncProfile> {
         return try {
@@ -53,6 +55,31 @@ object ProfileManager {
 
     fun saveState(state: SyncState) {
         val fileName = "$STATE_FILE_PREFIX${state.profileId}.json"
+        try {
+            val content = json.encodeToString(state)
+            writeTextFile(fileName, content)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun loadGitState(profileId: String): GitSyncState {
+        val fileName = "$GIT_STATE_FILE_PREFIX$profileId.json"
+        return try {
+            val content = readTextFile(fileName)
+            if (content.isNullOrEmpty()) {
+                GitSyncState(profileId = profileId, currentBranch = "main", lastCommitHash = "", lastSyncTime = 0L)
+            } else {
+                json.decodeFromString(content)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            GitSyncState(profileId = profileId, currentBranch = "main", lastCommitHash = "", lastSyncTime = 0L)
+        }
+    }
+
+    fun saveGitState(state: GitSyncState) {
+        val fileName = "$GIT_STATE_FILE_PREFIX${state.profileId}.json"
         try {
             val content = json.encodeToString(state)
             writeTextFile(fileName, content)

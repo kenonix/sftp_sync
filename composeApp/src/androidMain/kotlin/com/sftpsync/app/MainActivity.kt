@@ -23,9 +23,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 전역 context 홀더에 Application Context를 주입하여 
+        // 하위 백그라운드 서비스 및 플랫폼 Util 파일들이 안전하게 접근할 수 있도록 바인딩합니다.
         AndroidContext.context = applicationContext
 
-        // Register SAF folder tree picker and wire result back to AndroidFolderPicker
+        // Android 13 (API level 33) 이상 기기에서 백그라운드 포그라운드 서비스 알림이 정상 차단되지 않도록
+        // 런타임 알림 승인 권한(POST_NOTIFICATIONS)을 앱 시작 시 사용자에게 자동 요청합니다.
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 101)
+            }
+        }
+
+        // Storage Access Framework(SAF) 파일/폴더 선택 트리 런처를 등록하고 결과 수신 시 바인딩합니다.
+        // Android 생명주기 요구사항에 맞춰 반드시 onCreate() 도중에 등록을 끝마쳐야 합니다.
         folderPickerLauncher = registerForActivityResult(
             ActivityResultContracts.OpenDocumentTree()
         ) { uri: Uri? ->

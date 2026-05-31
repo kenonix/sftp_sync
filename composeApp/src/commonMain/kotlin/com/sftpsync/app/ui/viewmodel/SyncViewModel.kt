@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.sftpsync.app.models.*
 import com.sftpsync.app.sync.BiSyncEngineRunner
+import com.sftpsync.app.sync.GitSyncEngineRunner
+import com.sftpsync.app.sftp.JGitClient
 import com.sftpsync.app.utils.*
 import kotlinx.coroutines.*
 
@@ -187,10 +189,24 @@ class SyncViewModel {
 
         coroutineScope.launch {
             val success = withContext(Dispatchers.Default) {
-                val client = createSftpClient(profile)
-                val ok = client.connect()
-                client.disconnect()
-                ok
+                if (profile.syncMode == SyncMode.GIT) {
+                    val client = JGitClient(
+                        repositoryPath = profile.localPath,
+                        sshKeyPath = profile.gitSshKeyPath,
+                        author = profile.gitCommitAuthor,
+                        email = profile.gitCommitEmail,
+                        remoteUrl = profile.gitRepositoryUrl,
+                        branch = profile.gitBranch
+                    )
+                    val ok = client.connect()
+                    client.disconnect()
+                    ok
+                } else {
+                    val client = createSftpClient(profile)
+                    val ok = client.connect()
+                    client.disconnect()
+                    ok
+                }
             }
 
             state = state.copy(
@@ -200,8 +216,14 @@ class SyncViewModel {
         }
     }
 
+    /**
+     * 특정 프로필에 대해 수동 또는 자동 동기화를 시작합니다.
+     * UI 스레드 상에서 구동되어 실시간 프로그레스 바 및 상태 메시지를 출력합니다.
+     */
     fun startSync(profile: SyncProfile) {
-        if (state.isSyncing) return
+        // UI가 이미 동기화 중이거나 백그라운드 서비스가 구동 중인 경우 무시 (동시성 락 충돌 방지)
+        if (state.isSyncing || SyncLock.isSyncing) return
+        SyncLock.isSyncing = true // 전역 동시 구동 차단 락 활성화
         state = state.copy(
             isSyncing = true,
             syncProgress = 0f,
@@ -209,57 +231,118 @@ class SyncViewModel {
         )
 
         coroutineScope.launch {
-            val localClient = createLocalFileClient()
-            val sftpClient = createSftpClient(profile)
-            val runner = BiSyncEngineRunner(sftpClient, localClient)
+            try {
+                val localClient = createLocalFileClient()
 
-            val lastState = withContext(Dispatchers.Default) {
-                ProfileManager.loadState(profile.id)
-            }
+                if (profile.syncMode == SyncMode.GIT) {
+                    val gitClient = JGitClient(
+                        repositoryPath = profile.localPath,
+                        sshKeyPath = profile.gitSshKeyPath,
+                        author = profile.gitCommitAuthor,
+                        email = profile.gitCommitEmail,
+                        remoteUrl = profile.gitRepositoryUrl,
+                        branch = profile.gitBranch
+                    )
+                    val runner = GitSyncEngineRunner(gitClient, localClient)
 
-            val updatedState = runner.executeSync(
-                profile = profile,
-                lastState = lastState,
-                onProgress = { statusText, progress ->
-                    state = state.copy(
-                        syncStatusText = statusText,
-                        syncProgress = progress
+                    val lastState = withContext(Dispatchers.Default) {
+                        ProfileManager.loadGitState(profile.id)
+                    }
+
+                    val updatedState = runner.executeSync(
+                        profile = profile,
+                        lastState = lastState,
+                        onProgress = { statusText, progress ->
+                            state = state.copy(
+                                syncStatusText = statusText,
+                                syncProgress = progress
+                            )
+                        },
+                        onLog = { log ->
+                            ProfileManager.addLog(log)
+                            val loadedLogs = ProfileManager.loadLogs()
+                            state = state.copy(logs = loadedLogs)
+                        },
+                        checkDirectoryApproval = { isLocal, path ->
+                            val deferred = CompletableDeferred<Boolean>()
+                            state = state.copy(
+                                directoryApprovalRequest = DirectoryApprovalRequest(
+                                    isLocal = isLocal,
+                                    path = path,
+                                    onResponse = { approved ->
+                                        state = state.copy(directoryApprovalRequest = null)
+                                        deferred.complete(approved)
+                                    }
+                                )
+                            )
+                            deferred.await()
+                        }
                     )
-                },
-                onLog = { log ->
-                    ProfileManager.addLog(log)
-                    // Reload logs in UI
-                    val loadedLogs = ProfileManager.loadLogs()
-                    state = state.copy(logs = loadedLogs)
-                },
-                checkDirectoryApproval = { isLocal, path ->
-                    val deferred = CompletableDeferred<Boolean>()
-                    state = state.copy(
-                        directoryApprovalRequest = DirectoryApprovalRequest(
-                            isLocal = isLocal,
-                            path = path,
-                            onResponse = { approved ->
-                                state = state.copy(directoryApprovalRequest = null)
-                                deferred.complete(approved)
-                            }
-                        )
+
+                    withContext(Dispatchers.Default) {
+                        ProfileManager.saveGitState(updatedState)
+                    }
+                } else {
+                    val sftpClient = createSftpClient(profile)
+                    val runner = BiSyncEngineRunner(sftpClient, localClient)
+
+                    val lastState = withContext(Dispatchers.Default) {
+                        ProfileManager.loadState(profile.id)
+                    }
+
+                    val updatedState = runner.executeSync(
+                        profile = profile,
+                        lastState = lastState,
+                        onProgress = { statusText, progress ->
+                            state = state.copy(
+                                syncStatusText = statusText,
+                                syncProgress = progress
+                            )
+                        },
+                        onLog = { log ->
+                            ProfileManager.addLog(log)
+                            // Reload logs in UI
+                            val loadedLogs = ProfileManager.loadLogs()
+                            state = state.copy(logs = loadedLogs)
+                        },
+                        checkDirectoryApproval = { isLocal, path ->
+                            val deferred = CompletableDeferred<Boolean>()
+                            state = state.copy(
+                                directoryApprovalRequest = DirectoryApprovalRequest(
+                                    isLocal = isLocal,
+                                    path = path,
+                                    onResponse = { approved ->
+                                        state = state.copy(directoryApprovalRequest = null)
+                                        deferred.complete(approved)
+                                    }
+                                )
+                            )
+                            deferred.await()
+                        }
                     )
-                    deferred.await()
+
+                    withContext(Dispatchers.Default) {
+                        ProfileManager.saveState(updatedState)
+                    }
                 }
-            )
 
-            withContext(Dispatchers.Default) {
-                ProfileManager.saveState(updatedState)
+                state = state.copy(
+                    isSyncing = false,
+                    syncProgress = 1.0f,
+                    syncStatusText = "동기화 완료"
+                )
+                
+                // Auto refresh logs
+                loadAllData()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                state = state.copy(
+                    isSyncing = false,
+                    syncStatusText = "동기화 실패: ${e.message ?: "알 수 없는 오류"}"
+                )
+            } finally {
+                SyncLock.isSyncing = false
             }
-
-            state = state.copy(
-                isSyncing = false,
-                syncProgress = 1.0f,
-                syncStatusText = "동기화 완료"
-            )
-            
-            // Auto refresh logs
-            loadAllData()
         }
     }
 
@@ -280,17 +363,23 @@ class SyncViewModel {
         return java.util.UUID.randomUUID().toString()
     }
 
-    // Starts or stops watcher for a specific profile based on its config
+    // 프로필 설정에 맞춰 파일 감시자(FileWatcher)와 원격 서버 감지용 폴링 스케줄러를 개설하거나 파기합니다.
     fun updateAutoSyncWatcher(profile: SyncProfile) {
-        // Cancel existing watcher if any
+        // 기존 감시 스케줄 파기
         activeWatchers[profile.id]?.cancel()
         activeWatchers.remove(profile.id)
         debounceJobs[profile.id]?.cancel()
         debounceJobs.remove(profile.id)
         
-        // Cancel existing remote polling job if any
+        // 기존 원격 검사 타이머 파기
         remotePollingJobs[profile.id]?.cancel()
         remotePollingJobs.remove(profile.id)
+
+        // Android 환경에서는 포그라운드 서비스(SyncForegroundService)가 파일 감시와 
+        // 폴링을 독립적으로 관리하므로, UI 뷰모델 레벨의 감시 등록을 건너뜁니다.
+        if (getPlatformName() == "Android") {
+            return
+        }
 
         if (profile.autoSyncEnabled) {
             // 1. Local File Watcher Setup

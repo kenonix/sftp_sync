@@ -253,7 +253,7 @@ fun SidebarPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Filled.Cloud,
+                        if (profile.syncMode == SyncMode.GIT) Icons.Filled.AccountTree else Icons.Filled.Cloud,
                         contentDescription = null,
                         tint = if (isSelected) CyanGlow else TextMuted,
                         modifier = Modifier.size(20.dp)
@@ -269,7 +269,7 @@ fun SidebarPanel(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            profile.host,
+                            if (profile.syncMode == SyncMode.GIT) "Git: ${profile.gitBranch}" else profile.host,
                             color = TextMuted,
                             fontSize = 11.sp,
                             maxLines = 1,
@@ -467,7 +467,11 @@ fun DashboardScreen(
                     }
                 }
                 Text(
-                    "원격지: ${profile.username}@${profile.host}:${profile.port}",
+                    if (profile.syncMode == SyncMode.GIT) {
+                        "Git 원격: ${profile.gitRepositoryUrl} (${profile.gitBranch})"
+                    } else {
+                        "원격지: ${profile.username}@${profile.host}:${profile.port}"
+                    },
                     color = TextMuted,
                     fontSize = 13.sp
                 )
@@ -600,13 +604,22 @@ fun StatusOverviewCard(profile: SyncProfile, state: UiState) {
                         .background(CyanGlow.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.CloudQueue, contentDescription = null, tint = CyanGlow, modifier = Modifier.size(18.dp))
+                    Icon(
+                        if (profile.syncMode == SyncMode.GIT) Icons.Filled.AccountTree else Icons.Filled.CloudQueue,
+                        contentDescription = null,
+                        tint = CyanGlow,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("SFTP 원격지 경로", color = TextMuted, fontSize = 11.sp)
                     Text(
-                        profile.remotePath,
+                        if (profile.syncMode == SyncMode.GIT) "Git 원격 저장소" else "SFTP 원격지 경로",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        if (profile.syncMode == SyncMode.GIT) profile.gitRepositoryUrl else profile.remotePath,
                         color = TextLight,
                         fontWeight = FontWeight.Medium,
                         fontSize = 13.sp,
@@ -892,6 +905,7 @@ fun ProfileEditorScreen(
     val scope = rememberCoroutineScope()
 
     var name by remember(profile.id) { mutableStateOf(profile.name) }
+    var syncMode by remember(profile.id) { mutableStateOf(profile.syncMode) }
     var host by remember(profile.id) { mutableStateOf(profile.host) }
     var port by remember(profile.id) { mutableStateOf(profile.port.toString()) }
     var username by remember(profile.id) { mutableStateOf(profile.username) }
@@ -899,6 +913,11 @@ fun ProfileEditorScreen(
     var password by remember(profile.id) { mutableStateOf(profile.password) }
     var privateKey by remember(profile.id) { mutableStateOf(profile.privateKeyContent ?: "") }
     var passphrase by remember(profile.id) { mutableStateOf(profile.passphrase ?: "") }
+    var gitRepositoryUrl by remember(profile.id) { mutableStateOf(profile.gitRepositoryUrl) }
+    var gitBranch by remember(profile.id) { mutableStateOf(profile.gitBranch) }
+    var gitSshKeyPath by remember(profile.id) { mutableStateOf(profile.gitSshKeyPath ?: "") }
+    var gitCommitAuthor by remember(profile.id) { mutableStateOf(profile.gitCommitAuthor) }
+    var gitCommitEmail by remember(profile.id) { mutableStateOf(profile.gitCommitEmail) }
     var localPath by remember(profile.id) { mutableStateOf(profile.localPath) }
     var remotePath by remember(profile.id) { mutableStateOf(profile.remotePath) }
     var conflictStrategy by remember(profile.id) { mutableStateOf(profile.conflictStrategy) }
@@ -921,7 +940,7 @@ fun ProfileEditorScreen(
             )
         }
 
-        // Connection Card
+        // Sync Mode Tab Selector
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -930,43 +949,7 @@ fun ProfileEditorScreen(
                 border = BorderStroke(1.dp, Slate700)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("1. SFTP 서버 접속 설정", fontWeight = FontWeight.Bold, color = CyanGlow, fontSize = 14.sp)
-                    
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        label = { Text("프로필 명칭") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-                    )
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = host,
-                            onValueChange = { host = it },
-                            label = { Text("서버 호스트 (IP / Domain)") },
-                            modifier = Modifier.weight(0.7f),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-                        )
-                        OutlinedTextField(
-                            value = port,
-                            onValueChange = { port = it },
-                            label = { Text("포트") },
-                            modifier = Modifier.weight(0.3f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-                        )
-                    }
-
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        label = { Text("사용자명 (Username)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-                    )
-
-                    // Auth Type Tabs
+                    Text("동기화 방식 선택", fontWeight = FontWeight.Bold, color = CyanGlow, fontSize = 14.sp)
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Slate900)
                     ) {
@@ -974,56 +957,195 @@ fun ProfileEditorScreen(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { authType = AuthType.PASSWORD }
-                                .background(if (authType == AuthType.PASSWORD) Slate700 else Color.Transparent)
+                                .clickable { syncMode = SyncMode.SFTP }
+                                .background(if (syncMode == SyncMode.SFTP) Slate700 else Color.Transparent)
                                 .padding(10.dp)
                         ) {
-                            Text("비밀번호 방식", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("SFTP 양방향", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { authType = AuthType.PRIVATE_KEY }
-                                .background(if (authType == AuthType.PRIVATE_KEY) Slate700 else Color.Transparent)
+                                .clickable { syncMode = SyncMode.GIT }
+                                .background(if (syncMode == SyncMode.GIT) Slate700 else Color.Transparent)
                                 .padding(10.dp)
                         ) {
-                            Text("개인키 (Private Key) 방식", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Git 저장소 동기화", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
+                }
+            }
+        }
 
-                    if (authType == AuthType.PASSWORD) {
+        // Connection Card
+        item {
+            if (syncMode == SyncMode.SFTP) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Slate700)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("1. SFTP 서버 접속 설정", fontWeight = FontWeight.Bold, color = CyanGlow, fontSize = 14.sp)
+                        
                         OutlinedTextField(
-                            value = password,
-                            onValueChange = { password = it },
-                            label = { Text("비밀번호") },
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("프로필 명칭") },
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                    Icon(image, contentDescription = null, tint = TextMuted)
-                                }
-                            },
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
                         )
-                    } else {
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = host,
+                                onValueChange = { host = it },
+                                label = { Text("서버 호스트 (IP / Domain)") },
+                                modifier = Modifier.weight(0.7f),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                            OutlinedTextField(
+                                value = port,
+                                onValueChange = { port = it },
+                                label = { Text("포트") },
+                                modifier = Modifier.weight(0.3f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                        }
+
                         OutlinedTextField(
-                            value = privateKey,
-                            onValueChange = { privateKey = it },
-                            label = { Text("PEM 개인키 내용") },
-                            modifier = Modifier.fillMaxWidth().height(120.dp),
-                            maxLines = 10,
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-                        )
-                        OutlinedTextField(
-                            value = passphrase,
-                            onValueChange = { passphrase = it },
-                            label = { Text("키 비밀번호 (Passphrase - 선택사항)") },
+                            value = username,
+                            onValueChange = { username = it },
+                            label = { Text("사용자명 (Username)") },
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = PasswordVisualTransformation(),
                             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
                         )
+
+                        // Auth Type Tabs
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Slate900)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { authType = AuthType.PASSWORD }
+                                    .background(if (authType == AuthType.PASSWORD) Slate700 else Color.Transparent)
+                                    .padding(10.dp)
+                            ) {
+                                Text("비밀번호 방식", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { authType = AuthType.PRIVATE_KEY }
+                                    .background(if (authType == AuthType.PRIVATE_KEY) Slate700 else Color.Transparent)
+                                    .padding(10.dp)
+                            ) {
+                                Text("개인키 (Private Key) 방식", color = TextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+
+                        if (authType == AuthType.PASSWORD) {
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = { Text("비밀번호") },
+                                modifier = Modifier.fillMaxWidth(),
+                                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                        Icon(image, contentDescription = null, tint = TextMuted)
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = privateKey,
+                                onValueChange = { privateKey = it },
+                                label = { Text("PEM 개인키 내용") },
+                                modifier = Modifier.fillMaxWidth().height(120.dp),
+                                maxLines = 10,
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                            OutlinedTextField(
+                                value = passphrase,
+                                onValueChange = { passphrase = it },
+                                label = { Text("키 비밀번호 (Passphrase - 선택사항)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                visualTransformation = PasswordVisualTransformation(),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Slate700)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("1. Git 원격 저장소 접속 설정", fontWeight = FontWeight.Bold, color = CyanGlow, fontSize = 14.sp)
+                        
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("프로필 명칭") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                        )
+
+                        OutlinedTextField(
+                            value = gitRepositoryUrl,
+                            onValueChange = { gitRepositoryUrl = it },
+                            label = { Text("원격 저장소 URL (HTTPS 또는 SSH)") },
+                            placeholder = { Text("예: git@github.com:username/repo.git") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = gitBranch,
+                                onValueChange = { gitBranch = it },
+                                label = { Text("대상 브랜치") },
+                                modifier = Modifier.weight(0.5f),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                            OutlinedTextField(
+                                value = gitSshKeyPath,
+                                onValueChange = { gitSshKeyPath = it },
+                                label = { Text("SSH 개인키 경로 (선택)") },
+                                placeholder = { Text("예: /home/user/.ssh/id_rsa") },
+                                modifier = Modifier.weight(0.5f),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = gitCommitAuthor,
+                                onValueChange = { gitCommitAuthor = it },
+                                label = { Text("커밋 작성자 이름") },
+                                modifier = Modifier.weight(0.5f),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                            OutlinedTextField(
+                                value = gitCommitEmail,
+                                onValueChange = { gitCommitEmail = it },
+                                label = { Text("커밋 작성자 이메일") },
+                                modifier = Modifier.weight(0.5f),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                            )
+                        }
                     }
                 }
             }
@@ -1124,13 +1246,15 @@ fun ProfileEditorScreen(
                         }
                     }
 
-                    OutlinedTextField(
-                        value = remotePath,
-                        onValueChange = { remotePath = it },
-                        label = { Text("SFTP 원격 동기화 대상 폴더") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-                    )
+                    if (syncMode == SyncMode.SFTP) {
+                        OutlinedTextField(
+                            value = remotePath,
+                            onValueChange = { remotePath = it },
+                            label = { Text("SFTP 원격 동기화 대상 폴더") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
                     
@@ -1231,7 +1355,11 @@ fun ProfileEditorScreen(
                 // Connection test outcome
                 state.connectionResult?.let { success ->
                     val color = if (success) SuccessGreen else ErrorRed
-                    val text = if (success) "접속 테스트 성공! 정상적으로 연결 가능합니다." else "접속 테스트 실패! 서버 설정이나 인증 값을 확인하세요."
+                    val text = if (success) {
+                        if (syncMode == SyncMode.GIT) "Git 저장소 접속 및 초기화 성공!" else "접속 테스트 성공! 정상적으로 연결 가능합니다."
+                    } else {
+                        if (syncMode == SyncMode.GIT) "Git 저장소 연결 실패! 저장소 URL 및 SSH 키 설정을 확인하세요." else "접속 테스트 실패! 서버 설정이나 인증 값을 확인하세요."
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -1257,6 +1385,7 @@ fun ProfileEditorScreen(
                 ) {
                     val p = profile.copy(
                         name = name,
+                        syncMode = syncMode,
                         host = host,
                         port = port.toIntOrNull() ?: 22,
                         username = username,
@@ -1265,10 +1394,15 @@ fun ProfileEditorScreen(
                         privateKeyContent = privateKey.ifEmpty { null },
                         passphrase = passphrase.ifEmpty { null },
                         localPath = localPath,
-                        remotePath = remotePath,
+                        remotePath = if (syncMode == SyncMode.GIT) "" else remotePath,
                         conflictStrategy = conflictStrategy,
                         syncCondition = syncCondition,
-                        autoSyncEnabled = autoSyncEnabled
+                        autoSyncEnabled = autoSyncEnabled,
+                        gitRepositoryUrl = gitRepositoryUrl,
+                        gitBranch = gitBranch,
+                        gitSshKeyPath = gitSshKeyPath.ifEmpty { null },
+                        gitCommitAuthor = gitCommitAuthor,
+                        gitCommitEmail = gitCommitEmail
                     )
 
                     Button(
@@ -1276,7 +1410,13 @@ fun ProfileEditorScreen(
                         modifier = Modifier.weight(0.40f),
                         colors = ButtonDefaults.buttonColors(containerColor = Slate700),
                         shape = RoundedCornerShape(8.dp),
-                        enabled = !state.isConnecting && host.isNotEmpty() && username.isNotEmpty()
+                        enabled = !state.isConnecting && (
+                            if (syncMode == SyncMode.GIT) {
+                                localPath.isNotEmpty()
+                            } else {
+                                host.isNotEmpty() && username.isNotEmpty()
+                            }
+                        )
                     ) {
                         Text(if (state.isConnecting) "연결 중..." else "연결 테스트")
                     }
@@ -1286,7 +1426,13 @@ fun ProfileEditorScreen(
                         modifier = Modifier.weight(0.40f),
                         colors = ButtonDefaults.buttonColors(containerColor = CyanGlow),
                         shape = RoundedCornerShape(8.dp),
-                        enabled = name.isNotEmpty() && host.isNotEmpty() && username.isNotEmpty() && localPath.isNotEmpty() && remotePath.isNotEmpty()
+                        enabled = name.isNotEmpty() && localPath.isNotEmpty() && (
+                            if (syncMode == SyncMode.GIT) {
+                                gitRepositoryUrl.isNotEmpty()
+                            } else {
+                                host.isNotEmpty() && username.isNotEmpty() && remotePath.isNotEmpty()
+                            }
+                        )
                     ) {
                         Text("프로필 저장", fontWeight = FontWeight.Bold)
                     }

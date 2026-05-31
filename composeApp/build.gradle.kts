@@ -33,16 +33,22 @@ kotlin {
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
                 implementation(compose.materialIconsExtended)
-                
+
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
+
+                // Git 동기화 라이브러리
+                implementation("org.eclipse.jgit:org.eclipse.jgit:6.7.0.202309050840-r")
+                implementation("org.eclipse.jgit:org.eclipse.jgit.ssh.jsch:6.7.0.202309050840-r") {
+                    exclude(group = "com.jcraft", module = "jsch")
+                }
+                implementation(libs.jsch)
             }
         }
         
         val androidMain by getting {
             dependencies {
                 implementation(libs.kotlinx.coroutines.android)
-                implementation(libs.jsch)
                 implementation("androidx.activity:activity-compose:1.8.2")
                 implementation("androidx.appcompat:appcompat:1.6.1")
                 implementation("androidx.core:core-ktx:1.12.0")
@@ -52,7 +58,6 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
-                implementation(libs.jsch)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation("com.dorkbox:SystemTray:4.4")
             }
@@ -75,6 +80,14 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources {
+            pickFirsts.add("plugin.properties")
+            excludes.add("META-INF/DEPENDENCIES")
+            excludes.add("META-INF/INDEX.LIST")
+        }
     }
 }
 

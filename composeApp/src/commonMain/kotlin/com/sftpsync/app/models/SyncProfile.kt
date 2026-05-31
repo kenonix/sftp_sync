@@ -27,16 +27,28 @@ enum class SyncCondition {
 data class SyncProfile(
     val id: String,
     val name: String,
-    val host: String,
+    val syncMode: SyncMode = SyncMode.SFTP,
+
+    // SFTP 관련 필드
+    val host: String = "",
     val port: Int = 22,
-    val username: String,
+    val username: String = "",
     val authType: AuthType = AuthType.PASSWORD,
     val password: String = "",
     val privateKeyContent: String? = null,
     val passphrase: String? = null,
+
+    // Git 관련 필드
+    val gitRepositoryUrl: String = "",
+    val gitBranch: String = "main",
+    val gitSshKeyPath: String? = null,
+    val gitCommitAuthor: String = "SyncBot",
+    val gitCommitEmail: String = "sync@sftpsync.local",
+
+    // 공통 필드
     val localPath: String,
     val remotePath: String,
-    val syncIntervalMinutes: Int = 0, // 0 = Manual
+    val syncIntervalMinutes: Int = 0,
     val conflictStrategy: ConflictStrategy = ConflictStrategy.NEWER_WINS,
     val syncCondition: SyncCondition = SyncCondition.TIME_DIFFERENT,
     val autoSyncEnabled: Boolean = false,
