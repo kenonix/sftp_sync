@@ -200,14 +200,22 @@ class SyncViewModel {
                         remoteUrl = profile.gitRepositoryUrl,
                         branch = profile.gitBranch
                     )
-                    val ok = client.connect()
-                    client.disconnect()
-                    ok
+                    try {
+                        client.connect()
+                    } catch (e: Exception) {
+                        false
+                    } finally {
+                        client.disconnect()
+                    }
                 } else {
                     val client = createSftpClient(profile)
-                    val ok = client.connect()
-                    client.disconnect()
-                    ok
+                    try {
+                        client.connect()
+                    } catch (e: Exception) {
+                        false
+                    } finally {
+                        client.disconnect()
+                    }
                 }
             }
 
@@ -224,127 +232,143 @@ class SyncViewModel {
      */
     fun startSync(profile: SyncProfile) {
         // UI가 이미 동기화 중이거나 백그라운드 서비스가 구동 중인 경우 무시 (동시성 락 충돌 방지)
-        if (state.isSyncing || SyncLock.isSyncing) return
-        SyncLock.isSyncing = true // 전역 동시 구동 차단 락 활성화
+        synchronized(SyncLock) {
+            if (state.isSyncing || SyncLock.isSyncing) return
+            SyncLock.isSyncing = true // 전역 동시 구동 차단 락 활성화
+        }
+        
         state = state.copy(
             isSyncing = true,
             syncProgress = 0f,
             syncStatusText = "동기화 준비 중..."
         )
 
-        coroutineScope.launch {
-            try {
-                val localClient = createLocalFileClient()
+        try {
+            coroutineScope.launch {
+                try {
+                    val localClient = createLocalFileClient()
 
-                if (profile.syncMode == SyncMode.GIT) {
-                    val gitClient = JGitClient(
-                        repositoryPath = profile.localPath,
-                        sshKeyPath = profile.gitSshKeyPath,
-                        author = profile.gitCommitAuthor,
-                        email = profile.gitCommitEmail,
-                        remoteUrl = profile.gitRepositoryUrl,
-                        branch = profile.gitBranch
-                    )
-                    val runner = GitSyncEngineRunner(gitClient, localClient)
+                    if (profile.syncMode == SyncMode.GIT) {
+                        val gitClient = JGitClient(
+                            repositoryPath = profile.localPath,
+                            sshKeyPath = profile.gitSshKeyPath,
+                            author = profile.gitCommitAuthor,
+                            email = profile.gitCommitEmail,
+                            remoteUrl = profile.gitRepositoryUrl,
+                            branch = profile.gitBranch
+                        )
+                        val runner = GitSyncEngineRunner(gitClient, localClient)
 
-                    val lastState = withContext(Dispatchers.Default) {
-                        ProfileManager.loadGitState(profile.id)
-                    }
-
-                    val updatedState = runner.executeSync(
-                        profile = profile,
-                        lastState = lastState,
-                        onProgress = { statusText, progress ->
-                            state = state.copy(
-                                syncStatusText = statusText,
-                                syncProgress = progress
-                            )
-                        },
-                        onLog = { log ->
-                            ProfileManager.addLog(log)
-                            val loadedLogs = ProfileManager.loadLogs()
-                            state = state.copy(logs = loadedLogs)
-                        },
-                        checkDirectoryApproval = { isLocal, path ->
-                            val deferred = CompletableDeferred<Boolean>()
-                            state = state.copy(
-                                directoryApprovalRequest = DirectoryApprovalRequest(
-                                    isLocal = isLocal,
-                                    path = path,
-                                    onResponse = { approved ->
-                                        state = state.copy(directoryApprovalRequest = null)
-                                        deferred.complete(approved)
-                                    }
-                                )
-                            )
-                            deferred.await()
+                        val lastState = withContext(Dispatchers.Default) {
+                            ProfileManager.loadGitState(profile.id)
                         }
-                    )
 
-                    withContext(Dispatchers.Default) {
-                        ProfileManager.saveGitState(updatedState)
-                    }
-                } else {
-                    val sftpClient = createSftpClient(profile)
-                    val runner = BiSyncEngineRunner(sftpClient, localClient)
-
-                    val lastState = withContext(Dispatchers.Default) {
-                        ProfileManager.loadState(profile.id)
-                    }
-
-                    val updatedState = runner.executeSync(
-                        profile = profile,
-                        lastState = lastState,
-                        onProgress = { statusText, progress ->
-                            state = state.copy(
-                                syncStatusText = statusText,
-                                syncProgress = progress
-                            )
-                        },
-                        onLog = { log ->
-                            ProfileManager.addLog(log)
-                            // Reload logs in UI
-                            val loadedLogs = ProfileManager.loadLogs()
-                            state = state.copy(logs = loadedLogs)
-                        },
-                        checkDirectoryApproval = { isLocal, path ->
-                            val deferred = CompletableDeferred<Boolean>()
-                            state = state.copy(
-                                directoryApprovalRequest = DirectoryApprovalRequest(
-                                    isLocal = isLocal,
-                                    path = path,
-                                    onResponse = { approved ->
-                                        state = state.copy(directoryApprovalRequest = null)
-                                        deferred.complete(approved)
-                                    }
+                        val updatedState = runner.executeSync(
+                            profile = profile,
+                            lastState = lastState,
+                            onProgress = { statusText, progress ->
+                                state = state.copy(
+                                    syncStatusText = statusText,
+                                    syncProgress = progress
                                 )
-                            )
-                            deferred.await()
-                        }
-                    )
+                            },
+                            onLog = { log ->
+                                ProfileManager.addLog(log)
+                                val loadedLogs = ProfileManager.loadLogs()
+                                state = state.copy(logs = loadedLogs)
+                            },
+                            checkDirectoryApproval = { isLocal, path ->
+                                val deferred = CompletableDeferred<Boolean>()
+                                state = state.copy(
+                                    directoryApprovalRequest = DirectoryApprovalRequest(
+                                        isLocal = isLocal,
+                                        path = path,
+                                        onResponse = { approved ->
+                                            state = state.copy(directoryApprovalRequest = null)
+                                            deferred.complete(approved)
+                                        }
+                                    )
+                                )
+                                deferred.await()
+                            }
+                        )
 
-                    withContext(Dispatchers.Default) {
-                        ProfileManager.saveState(updatedState)
+                        withContext(Dispatchers.Default) {
+                            ProfileManager.saveGitState(updatedState)
+                        }
+                    } else {
+                        val sftpClient = createSftpClient(profile)
+                        val runner = BiSyncEngineRunner(sftpClient, localClient)
+
+                        val lastState = withContext(Dispatchers.Default) {
+                            ProfileManager.loadState(profile.id)
+                        }
+
+                        val updatedState = runner.executeSync(
+                            profile = profile,
+                            lastState = lastState,
+                            onProgress = { statusText, progress ->
+                                state = state.copy(
+                                    syncStatusText = statusText,
+                                    syncProgress = progress
+                                )
+                            },
+                            onLog = { log ->
+                                ProfileManager.addLog(log)
+                                // Reload logs in UI
+                                val loadedLogs = ProfileManager.loadLogs()
+                                state = state.copy(logs = loadedLogs)
+                            },
+                            checkDirectoryApproval = { isLocal, path ->
+                                val deferred = CompletableDeferred<Boolean>()
+                                state = state.copy(
+                                    directoryApprovalRequest = DirectoryApprovalRequest(
+                                        isLocal = isLocal,
+                                        path = path,
+                                        onResponse = { approved ->
+                                            state = state.copy(directoryApprovalRequest = null)
+                                            deferred.complete(approved)
+                                        }
+                                    )
+                                )
+                                deferred.await()
+                            }
+                        )
+
+                        withContext(Dispatchers.Default) {
+                            ProfileManager.saveState(updatedState)
+                        }
+                    }
+
+                    state = state.copy(
+                        isSyncing = false,
+                        syncProgress = 1.0f,
+                        syncStatusText = "동기화 완료"
+                    )
+                    
+                    // Auto refresh logs
+                    loadAllData()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    state = state.copy(
+                        isSyncing = false,
+                        syncStatusText = "동기화 실패: ${e.message ?: "알 수 없는 오류"}"
+                    )
+                } finally {
+                    synchronized(SyncLock) {
+                        SyncLock.isSyncing = false
                     }
                 }
-
-                state = state.copy(
-                    isSyncing = false,
-                    syncProgress = 1.0f,
-                    syncStatusText = "동기화 완료"
-                )
-                
-                // Auto refresh logs
-                loadAllData()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                state = state.copy(
-                    isSyncing = false,
-                    syncStatusText = "동기화 실패: ${e.message ?: "알 수 없는 오류"}"
-                )
-            } finally {
+            }
+        } catch (e: Exception) {
+            synchronized(SyncLock) {
                 SyncLock.isSyncing = false
             }
+            state = state.copy(
+                isSyncing = false,
+                syncStatusText = "동기화 시작 실패: ${e.message ?: "알 수 없는 오류"}"
+            )
+            e.printStackTrace()
         }
     }
 

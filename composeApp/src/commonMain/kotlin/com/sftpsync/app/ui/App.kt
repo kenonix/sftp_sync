@@ -736,9 +736,7 @@ fun SyncActionButtonCard(
                             tint = if (state.isSyncing) CyanGlow else TextWhite,
                             modifier = Modifier
                                 .size(56.dp)
-                                .graphicsLayer {
-                                    rotationZ = if (state.isSyncing) angle else 0f
-                                }
+                                .rotate(if (state.isSyncing) angle else 0f)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(

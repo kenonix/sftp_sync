@@ -163,57 +163,68 @@ class SyncForegroundService : Service() {
      */
     private fun startBackgroundSync(profile: com.sftpsync.app.models.SyncProfile) {
         // 이미 타 컴포넌트 혹은 다른 동기화 스케줄이 작동 중이면 무시 (동시 쓰기 레이스 차단)
-        if (com.sftpsync.app.utils.SyncLock.isSyncing) return
-        com.sftpsync.app.utils.SyncLock.isSyncing = true
+        synchronized(com.sftpsync.app.utils.SyncLock) {
+            if (com.sftpsync.app.utils.SyncLock.isSyncing) return
+            com.sftpsync.app.utils.SyncLock.isSyncing = true
+        }
 
-        serviceScope.launch {
-            try {
-                // 알림창의 내용을 동기화 모드로 역동적으로 갱신
-                updateNotification("동기화 진행 중: ${profile.name}")
+        try {
+            serviceScope.launch {
+                try {
+                    // 알림창의 내용을 동기화 모드로 역동적으로 갱신
+                    updateNotification("동기화 진행 중: ${profile.name}")
 
-                val localClient = com.sftpsync.app.utils.createLocalFileClient()
+                    val localClient = com.sftpsync.app.utils.createLocalFileClient()
 
-                if (profile.syncMode == com.sftpsync.app.models.SyncMode.GIT) {
-                    // Git 동기화 모드
-                    val gitClient = com.sftpsync.app.sftp.JGitClient(
-                        repositoryPath = profile.localPath,
-                        sshKeyPath = profile.gitSshKeyPath,
-                        author = profile.gitCommitAuthor,
-                        email = profile.gitCommitEmail,
-                        remoteUrl = profile.gitRepositoryUrl,
-                        branch = profile.gitBranch
-                    )
-                    val runner = com.sftpsync.app.sync.GitSyncEngineRunner(gitClient, localClient)
-                    val lastState = com.sftpsync.app.utils.ProfileManager.loadGitState(profile.id)
-                    val updatedState = runner.executeSync(
-                        profile = profile,
-                        lastState = lastState,
-                        onProgress = { _, _ -> },
-                        onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
-                        checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리
-                    )
-                    com.sftpsync.app.utils.ProfileManager.saveGitState(updatedState)
-                } else {
-                    // SFTP 양방향 동기화 모드
-                    val sftpClient = com.sftpsync.app.utils.createSftpClient(profile)
-                    val runner = com.sftpsync.app.sync.BiSyncEngineRunner(sftpClient, localClient)
-                    val lastState = com.sftpsync.app.utils.ProfileManager.loadState(profile.id)
-                    val updatedState = runner.executeSync(
-                        profile = profile,
-                        lastState = lastState,
-                        onProgress = { _, _ -> },
-                        onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
-                        checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리
-                    )
-                    com.sftpsync.app.utils.ProfileManager.saveState(updatedState)
+                    if (profile.syncMode == com.sftpsync.app.models.SyncMode.GIT) {
+                        // Git 동기화 모드
+                        val gitClient = com.sftpsync.app.sftp.JGitClient(
+                            repositoryPath = profile.localPath,
+                            sshKeyPath = profile.gitSshKeyPath,
+                            author = profile.gitCommitAuthor,
+                            email = profile.gitCommitEmail,
+                            remoteUrl = profile.gitRepositoryUrl,
+                            branch = profile.gitBranch
+                        )
+                        val runner = com.sftpsync.app.sync.GitSyncEngineRunner(gitClient, localClient)
+                        val lastState = com.sftpsync.app.utils.ProfileManager.loadGitState(profile.id)
+                        val updatedState = runner.executeSync(
+                            profile = profile,
+                            lastState = lastState,
+                            onProgress = { _, _ -> },
+                            onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
+                            checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리
+                        )
+                        com.sftpsync.app.utils.ProfileManager.saveGitState(updatedState)
+                    } else {
+                        // SFTP 양방향 동기화 모드
+                        val sftpClient = com.sftpsync.app.utils.createSftpClient(profile)
+                        val runner = com.sftpsync.app.sync.BiSyncEngineRunner(sftpClient, localClient)
+                        val lastState = com.sftpsync.app.utils.ProfileManager.loadState(profile.id)
+                        val updatedState = runner.executeSync(
+                            profile = profile,
+                            lastState = lastState,
+                            onProgress = { _, _ -> },
+                            onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
+                            checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리
+                        )
+                        com.sftpsync.app.utils.ProfileManager.saveState(updatedState)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    // 락을 반드시 해제하고 알림 내용을 상시 모드로 복구
+                    synchronized(com.sftpsync.app.utils.SyncLock) {
+                        com.sftpsync.app.utils.SyncLock.isSyncing = false
+                    }
+                    updateNotification("실시간 양방향 동기화 백그라운드 가동 중")
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                // 락을 반드시 해제하고 알림 내용을 상시 모드로 복구
-                com.sftpsync.app.utils.SyncLock.isSyncing = false
-                updateNotification("실시간 양방향 동기화 백그라운드 가동 중")
             }
+        } catch (e: Exception) {
+            synchronized(com.sftpsync.app.utils.SyncLock) {
+                com.sftpsync.app.utils.SyncLock.isSyncing = false
+            }
+            e.printStackTrace()
         }
     }
 
