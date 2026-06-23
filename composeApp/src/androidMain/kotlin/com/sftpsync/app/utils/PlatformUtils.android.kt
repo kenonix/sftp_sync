@@ -409,3 +409,77 @@ actual fun stopPlatformBackgroundService() {
     }
 }
 
+actual fun getConflictTimestamp(): String {
+    val sdf = java.text.SimpleDateFormat("yyyyMMdd")
+    return sdf.format(java.util.Date())
+}
+
+object AndroidFilePicker {
+    var launcher: androidx.activity.result.ActivityResultLauncher<Array<String>>? = null
+    private var pending: kotlinx.coroutines.CompletableDeferred<android.net.Uri?>? = null
+
+    fun onResult(uri: android.net.Uri?) {
+        pending?.complete(uri)
+        pending = null
+    }
+
+    suspend fun pick(): android.net.Uri? {
+        val currentLauncher = launcher ?: return null
+        val deferred = kotlinx.coroutines.CompletableDeferred<android.net.Uri?>()
+        pending = deferred
+        currentLauncher.launch(arrayOf("*/*"))
+        return deferred.await()
+    }
+}
+
+actual suspend fun exportSettings(jsonContent: String): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    try {
+        val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs()
+        }
+        val file = java.io.File(downloadDir, "sftp_sync_backup.json")
+        file.writeText(jsonContent)
+
+        // Launch share chooser
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+            try {
+                val context = AndroidContext.context
+                val sendIntent = android.content.Intent().apply {
+                    action = android.content.Intent.ACTION_SEND
+                    putExtra(android.content.Intent.EXTRA_TEXT, jsonContent)
+                    type = "text/plain"
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val shareIntent = android.content.Intent.createChooser(sendIntent, "설정 백업 공유/저장").apply {
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(shareIntent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        file.absolutePath
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+actual suspend fun importSettings(): String? {
+    val uri = AndroidFilePicker.pick() ?: return null
+    return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val contentResolver = AndroidContext.context.contentResolver
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.bufferedReader().use { it.readText() }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+}
+
+
+

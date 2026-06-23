@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.sftpsync.app.models.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 import com.sftpsync.app.sync.BiSyncEngineRunner
 import com.sftpsync.app.sync.GitSyncEngineRunner
 import com.sftpsync.app.sftp.JGitClient
@@ -422,6 +424,65 @@ class SyncViewModel {
                 startPlatformBackgroundService()
             } else {
                 stopPlatformBackgroundService()
+            }
+        }
+    }
+
+    fun exportSettingsToFile(onComplete: (String?) -> Unit) {
+        coroutineScope.launch {
+            try {
+                val profiles = state.profiles
+                val jsonStr = withContext(Dispatchers.Default) {
+                    kotlinx.serialization.json.Json { prettyPrint = true }.encodeToString(profiles)
+                }
+                val path = exportSettings(jsonStr)
+                onComplete(path)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onComplete(null)
+            }
+        }
+    }
+
+    fun importSettingsFromFile(onComplete: (Boolean, String) -> Unit) {
+        coroutineScope.launch {
+            try {
+                val jsonStr = importSettings()
+                if (jsonStr.isNullOrEmpty()) {
+                    onComplete(false, "가져오기가 취소되었거나 파일이 비어 있습니다.")
+                    return@launch
+                }
+                val importedProfiles: List<SyncProfile> = withContext(Dispatchers.Default) {
+                    kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString(jsonStr)
+                }
+                if (importedProfiles.isEmpty()) {
+                    onComplete(false, "유효한 프로필 설정을 찾을 수 없습니다.")
+                    return@launch
+                }
+
+                val currentProfiles = state.profiles.toMutableList()
+                var addedCount = 0
+                var updatedCount = 0
+                for (imported in importedProfiles) {
+                    val index = currentProfiles.indexOfFirst { it.id == imported.id }
+                    if (index >= 0) {
+                        currentProfiles[index] = imported
+                        updatedCount++
+                    } else {
+                        currentProfiles.add(imported)
+                        addedCount++
+                    }
+                }
+
+                withContext(Dispatchers.Default) {
+                    ProfileManager.saveProfiles(currentProfiles)
+                }
+
+                loadAllData()
+                onComplete(true, "백업 파일에서 프로필 ${addedCount}개 추가, ${updatedCount}개 업데이트 완료!")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onComplete(false, "설정 가져오기 실패: ${e.message ?: "알 수 없는 오류"}")
             }
         }
     }

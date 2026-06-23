@@ -20,6 +20,7 @@ class MainActivity : ComponentActivity() {
 
     // SAF folder picker launcher — registered before onCreate per Android lifecycle requirements
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
+    private lateinit var filePickerLauncher: ActivityResultLauncher<Array<String>>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,8 +44,15 @@ class MainActivity : ComponentActivity() {
             AndroidFolderPicker.onResult(uri, contentResolver)
         }
 
+        filePickerLauncher = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri: Uri? ->
+            com.sftpsync.app.utils.AndroidFilePicker.onResult(uri)
+        }
+
         // Expose launcher to the singleton so PlatformUtils can invoke it
         AndroidFolderPicker.launcher = folderPickerLauncher
+        com.sftpsync.app.utils.AndroidFilePicker.launcher = filePickerLauncher
 
         setContent {
             App()
@@ -54,5 +62,6 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         AndroidFolderPicker.launcher = null
+        com.sftpsync.app.utils.AndroidFilePicker.launcher = null
     }
 }

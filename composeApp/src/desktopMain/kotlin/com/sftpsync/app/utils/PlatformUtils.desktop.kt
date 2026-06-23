@@ -229,6 +229,51 @@ actual fun stopPlatformBackgroundService() {
     // Desktop has no background service requirements
 }
 
+actual fun getConflictTimestamp(): String {
+    val sdf = java.text.SimpleDateFormat("yyyyMMdd")
+    return sdf.format(java.util.Date())
+}
+
+actual suspend fun exportSettings(jsonContent: String): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    try {
+        javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName())
+    } catch (e: Exception) {}
+    val chooser = javax.swing.JFileChooser().apply {
+        dialogTitle = "설정 백업 파일 저장 위치 선택"
+        selectedFile = java.io.File("sftp_sync_backup.json")
+    }
+    val result = chooser.showSaveDialog(null)
+    if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+        val file = chooser.selectedFile
+        file.writeText(jsonContent)
+        file.absolutePath
+    } else {
+        null
+    }
+}
+
+actual suspend fun importSettings(): String? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    try {
+        javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName())
+    } catch (e: Exception) {}
+    val chooser = javax.swing.JFileChooser().apply {
+        dialogTitle = "설정 백업 파일 선택"
+    }
+    val result = chooser.showOpenDialog(null)
+    if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+        val file = chooser.selectedFile
+        if (file.exists()) {
+            file.readText()
+        } else {
+            null
+        }
+    } else {
+        null
+    }
+}
+
+
+
 
 
 

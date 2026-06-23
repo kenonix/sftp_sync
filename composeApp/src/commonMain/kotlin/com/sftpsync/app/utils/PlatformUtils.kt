@@ -87,7 +87,26 @@ expect fun startPlatformBackgroundService()
 /**
  * Instructs the platform to stop its background persistent service (if supported).
  */
-expect fun stopPlatformBackgroundService()
+expect fun stopPlatformBackgroundService(): Unit
+
+/**
+ * Returns a formatted date string for conflict resolution (e.g. "20260623").
+ */
+expect fun getConflictTimestamp(): String
+
+/**
+ * Exports the JSON content of settings/profiles to a file.
+ * Returns the destination path where it was saved, or null if cancelled/failed.
+ */
+expect suspend fun exportSettings(jsonContent: String): String?
+
+/**
+ * Imports settings JSON content from a selected file.
+ * Returns the JSON content of the file, or null if cancelled/failed.
+ */
+expect suspend fun importSettings(): String?
+
+
 
 
 

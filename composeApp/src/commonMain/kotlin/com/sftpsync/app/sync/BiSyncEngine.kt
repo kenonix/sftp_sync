@@ -76,24 +76,16 @@ object BiSyncEngine {
                     val localHash = getOrComputeLocalHash(path, local, meta)
                     val remoteHash = getOrComputeRemoteHash(path, remote, meta)
 
-                    val localChanged: Boolean
-                    val remoteChanged: Boolean
-
-                    if (localHash != null && remoteHash != null && meta.hash != null) {
-                        localChanged = localHash != meta.hash
-                        remoteChanged = remoteHash != meta.hash
+                    val localChanged = if (localHash != null && meta.hash != null) {
+                        localHash != meta.hash
                     } else {
-                        // Fallback to size/mtime
-                        localChanged = when (syncCondition) {
-                            SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
-                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
-                            SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
-                        }
-                        remoteChanged = when (syncCondition) {
-                            SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
-                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
-                            SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
-                        }
+                        local.size != meta.size || local.lastModified != meta.lastModifiedLocal
+                    }
+
+                    val remoteChanged = if (remoteHash != null && meta.hash != null) {
+                        remoteHash != meta.hash
+                    } else {
+                        remote.size != meta.size || remote.lastModified != meta.lastModifiedRemote
                     }
 
                     when {
@@ -147,15 +139,10 @@ object BiSyncEngine {
                     val localHash = getLocalHash(path)
                     val remoteHash = getRemoteHash(path)
 
-                    val areIdentical: Boolean
-                    if (localHash != null && remoteHash != null) {
-                        areIdentical = localHash == remoteHash
+                    val areIdentical = if (localHash != null && remoteHash != null) {
+                        localHash == remoteHash
                     } else {
-                        areIdentical = when (syncCondition) {
-                            SyncCondition.TIME_DIFFERENT -> local.lastModified == remote.lastModified
-                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified == remote.lastModified && local.size == remote.size
-                            SyncCondition.SIZE_DIFFERENT -> local.size == remote.size
-                        }
+                        local.size == remote.size && local.lastModified == remote.lastModified
                     }
 
                     if (areIdentical) {
@@ -177,15 +164,10 @@ object BiSyncEngine {
                 // 3. Exists in Local, NOT in Remote, exists in Last State (Remote deleted it)
                 local != null && remote == null && meta != null -> {
                     val localHash = getOrComputeLocalHash(path, local, meta)
-                    val localChanged: Boolean
-                    if (localHash != null && meta.hash != null) {
-                        localChanged = localHash != meta.hash
+                    val localChanged = if (localHash != null && meta.hash != null) {
+                        localHash != meta.hash
                     } else {
-                        localChanged = when (syncCondition) {
-                            SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
-                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
-                            SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
-                        }
+                        local.size != meta.size || local.lastModified != meta.lastModifiedLocal
                     }
 
                     if (localChanged) {
@@ -212,15 +194,10 @@ object BiSyncEngine {
                 // 4. NOT in Local, exists in Remote, exists in Last State (Local deleted it)
                 local == null && remote != null && meta != null -> {
                     val remoteHash = getOrComputeRemoteHash(path, remote, meta)
-                    val remoteChanged: Boolean
-                    if (remoteHash != null && meta.hash != null) {
-                        remoteChanged = remoteHash != meta.hash
+                    val remoteChanged = if (remoteHash != null && meta.hash != null) {
+                        remoteHash != meta.hash
                     } else {
-                        remoteChanged = when (syncCondition) {
-                            SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
-                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
-                            SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
-                        }
+                        remote.size != meta.size || remote.lastModified != meta.lastModifiedRemote
                     }
 
                     if (remoteChanged) {

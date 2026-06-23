@@ -1160,7 +1160,7 @@ fun ProfileEditorScreen(
                 border = BorderStroke(1.dp, Slate700)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("2. 동기화 폴더 및 충돌 정책 설정", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
+                    Text("2. 동기화 폴더 설정", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
                     
                     // Local Folder Picker
                     Row(
@@ -1285,41 +1285,7 @@ fun ProfileEditorScreen(
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("3. 동기화 조건 설정", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
-
-                    // Sync condition choice
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Slate900)
-                    ) {
-                        SyncCondition.values().forEach { cond ->
-                            val isSelected = syncCondition == cond
-                            val label = when (cond) {
-                                SyncCondition.TIME_DIFFERENT -> "시간 다름"
-                                SyncCondition.TIME_AND_SIZE_DIFFERENT -> "시간 & 용량 다름"
-                                SyncCondition.SIZE_DIFFERENT -> "용량 다름"
-                            }
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { syncCondition = cond }
-                                    .background(if (isSelected) Slate700 else Color.Transparent)
-                                    .padding(8.dp)
-                            ) {
-                                Text(label, color = TextLight, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            }
-                        }
-                    }
-
-                    val condDesc = when (syncCondition) {
-                        SyncCondition.TIME_DIFFERENT -> "파일 수정 시간이 다르면 동기화 대상으로 판단합니다."
-                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> "수정 시간과 파일 크기가 둘 다 다를 때만 동기화 대상으로 판단합니다."
-                        SyncCondition.SIZE_DIFFERENT -> "수정 시간은 무시하고 파일 크기(용량)만 비교하여 다르면 동기화합니다."
-                    }
-                    Text(condDesc, color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 4.dp))
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("4. 충돌 해결 전략", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
+                    Text("3. 충돌 해결 전략", fontWeight = FontWeight.Bold, color = BlueGlow, fontSize = 14.sp)
 
                     // Conflict strategy choice
                     Row(
@@ -1816,6 +1782,93 @@ fun SettingsScreen(
                                 fontSize = 13.sp,
                                 lineHeight = 20.sp
                             )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Slate700)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            "설정 백업 및 복원",
+                            fontWeight = FontWeight.Bold,
+                            color = TextWhite,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            "동기화 프로필 및 연결 설정들을 백업 파일(.json)로 내보내거나 백업 파일로부터 설정을 다시 가져옵니다.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(bottom = 20.dp)
+                        )
+
+                        var statusMessage by remember { mutableStateOf("") }
+                        var statusIsError by remember { mutableStateOf(false) }
+
+                        if (statusMessage.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (statusIsError) ErrorRed.copy(alpha = 0.15f) else SuccessGreen.copy(alpha = 0.15f))
+                                    .border(1.dp, if (statusIsError) ErrorRed else SuccessGreen, RoundedCornerShape(8.dp))
+                                    .padding(10.dp)
+                            ) {
+                                Text(statusMessage, color = if (statusIsError) ErrorRed else SuccessGreen, fontSize = 12.sp)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    viewModel.exportSettingsToFile { path ->
+                                        if (path != null) {
+                                            statusIsError = false
+                                            statusMessage = "설정을 백업 파일로 내보냈습니다:\n$path"
+                                        } else {
+                                            statusIsError = true
+                                            statusMessage = "설정 백업 내보내기 실패"
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, BlueGlow)
+                            ) {
+                                Icon(Icons.Filled.Launch, contentDescription = null, tint = BlueGlow, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("백업 내보내기", color = TextLight, fontSize = 13.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    viewModel.importSettingsFromFile { success, msg ->
+                                        statusIsError = !success
+                                        statusMessage = msg
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, CyanGlow)
+                            ) {
+                                Icon(Icons.Filled.FolderOpen, contentDescription = null, tint = CyanGlow, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("백업 가져오기", color = TextLight, fontSize = 13.sp)
+                            }
                         }
                     }
                 }

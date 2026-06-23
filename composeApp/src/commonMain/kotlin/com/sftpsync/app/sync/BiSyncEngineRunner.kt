@@ -446,73 +446,74 @@ class BiSyncEngineRunner(
             filename to ""
         }
 
-        // Generate renamed relative paths
-        val localRenamed = if (parent.isEmpty()) "${base}_local$ext" else "$parent/${base}_local$ext"
-        val remoteRenamed = if (parent.isEmpty()) "${base}_remote$ext" else "$parent/${base}_remote$ext"
+        val conflictTimestamp = com.sftpsync.app.utils.getConflictTimestamp()
+        val remoteRenamedBase = if (parent.isEmpty()) "${base}_conflict_$conflictTimestamp$ext" else "$parent/${base}_conflict_$conflictTimestamp$ext"
+
+        // Generate unique renamed path if conflict file already exists
+        var counter = 0
+        var uniqueRemoteRenamed = remoteRenamedBase
+        while (java.io.File("${profile.localPath}/$uniqueRemoteRenamed").exists()) {
+            counter++
+            uniqueRemoteRenamed = if (parent.isEmpty()) {
+                "${base}_conflict_${conflictTimestamp}_$counter$ext"
+            } else {
+                "$parent/${base}_conflict_${conflictTimestamp}_$counter$ext"
+            }
+        }
+        val finalRemoteRenamed = uniqueRemoteRenamed
 
         val localFileOriginal = "${profile.localPath}/$relPath"
-        val localFileRenamed = "${profile.localPath}/$localRenamed"
-        val localFileRemoteRenamed = "${profile.localPath}/$remoteRenamed"
+        val localFileConflict = "${profile.localPath}/$finalRemoteRenamed"
         
         val remoteFileOriginal = "${profile.remotePath}/$relPath"
-        val remoteFileRenamed = "${profile.remotePath}/$remoteRenamed"
-        val remoteFileLocalRenamed = "${profile.remotePath}/$localRenamed"
+        val remoteFileConflict = "${profile.remotePath}/$finalRemoteRenamed"
 
-        // 1. Rename Local Original to Local_Local
-        val localFileObj = java.io.File(localFileOriginal)
-        val renamedLocalFileObj = java.io.File(localFileRenamed)
-        val renameLocalOk = localFileObj.renameTo(renamedLocalFileObj)
-
-        if (!renameLocalOk) {
-            throw Exception("로컬 충돌 파일 이름 변경 실패")
-        }
-
-        // 2. Download Remote Original to Local_Remote
-        val downloadOk = sftpClient.downloadFile(remoteFileOriginal, localFileRemoteRenamed) {}
+        // 1. Download Remote Original to Local Conflict file
+        val downloadOk = sftpClient.downloadFile(remoteFileOriginal, localFileConflict) {}
         if (!downloadOk) {
-            // Rollback local rename
-            renamedLocalFileObj.renameTo(localFileObj)
             throw Exception("원격 충돌 파일 다운로드 실패")
         }
 
-        // 3. Set remote mTime to local downloaded file
+        // 2. Set remote mTime to local downloaded conflict file
         val remoteOriginal = remoteFiles[relPath] ?: throw Exception("원격 원본 메타데이터 손실")
-        localClient.setLastModified(localFileRemoteRenamed, remoteOriginal.lastModified)
+        localClient.setLastModified(localFileConflict, remoteOriginal.lastModified)
 
-        // 4. Upload Local_Local to Remote
-        val uploadOk = sftpClient.uploadFile(localFileRenamed, remoteFileLocalRenamed) {}
-        if (!uploadOk) {
-            throw Exception("이름이 변경된 로컬 파일 업로드 실패")
+        // 3. Upload Local Original to Remote Original (Client wins/overwrites remote original)
+        val uploadOriginalOk = sftpClient.uploadFile(localFileOriginal, remoteFileOriginal) {}
+        if (!uploadOriginalOk) {
+            throw Exception("원격 원본 파일 업로드 실패")
         }
 
-        // 5. Delete Original Remote File
-        sftpClient.deleteFile(remoteFileOriginal)
+        // 4. Upload Local Conflict file to Remote Conflict file
+        val uploadConflictOk = sftpClient.uploadFile(localFileConflict, remoteFileConflict) {}
+        if (!uploadConflictOk) {
+            throw Exception("이름이 변경된 충돌 파일 업로드 실패")
+        }
 
-        // 6. Update metadata state: remove original and add the two renamed files
-        newMetadata.remove(relPath)
+        // 5. Update metadata state: update original (local original) and add the conflict file
+        val localOriginalFile = java.io.File(localFileOriginal)
+        val localOriginalModifiedTime = localOriginalFile.lastModified()
+        val remoteOriginalModifiedTime = sftpClient.getFileLastModified(remoteFileOriginal)
+        val localOriginalHash = localClient.getFileHash(localFileOriginal)
 
-        // Record local renamed metadata
-        val localModifiedTime = renamedLocalFileObj.lastModified()
-        val localUploadedRemoteTime = sftpClient.getFileLastModified(remoteFileLocalRenamed)
-        val localRenamedHash = localClient.getFileHash(localFileRenamed)
-        newMetadata[localRenamed] = SyncFileMetadata(
-            relativePath = localRenamed,
-            size = renamedLocalFileObj.length(),
-            lastModifiedLocal = localModifiedTime,
-            lastModifiedRemote = localUploadedRemoteTime,
+        newMetadata[relPath] = SyncFileMetadata(
+            relativePath = relPath,
+            size = localOriginalFile.length(),
+            lastModifiedLocal = localOriginalModifiedTime,
+            lastModifiedRemote = remoteOriginalModifiedTime,
             isDirectory = false,
-            hash = localRenamedHash
+            hash = localOriginalHash
         )
 
-        // Record remote renamed metadata
-        val remoteRenamedHash = localClient.getFileHash(localFileRemoteRenamed)
-        newMetadata[remoteRenamed] = SyncFileMetadata(
-            relativePath = remoteRenamed,
-            size = java.io.File(localFileRemoteRenamed).length(),
+        val localConflictFile = java.io.File(localFileConflict)
+        val localConflictHash = localClient.getFileHash(localFileConflict)
+        newMetadata[finalRemoteRenamed] = SyncFileMetadata(
+            relativePath = finalRemoteRenamed,
+            size = localConflictFile.length(),
             lastModifiedLocal = remoteOriginal.lastModified,
             lastModifiedRemote = remoteOriginal.lastModified,
             isDirectory = false,
-            hash = remoteRenamedHash
+            hash = localConflictHash
         )
 
         onLog(SyncLog(
@@ -522,7 +523,7 @@ class BiSyncEngineRunner(
             relativePath = relPath,
             actionType = "CONFLICT_KEEP_BOTH",
             status = SyncLogStatus.WARNING,
-            message = "충돌 파일 보존: '${localRenamed}' 및 '${remoteRenamed}' 생성 완료"
+            message = "충돌 파일 보존: 원격 파일이 '${finalRemoteRenamed}'(으)로 보존되었습니다."
         ))
     }
 
