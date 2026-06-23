@@ -212,12 +212,22 @@ class SyncForegroundService : Service() {
                         com.sftpsync.app.utils.ProfileManager.saveGitState(updatedState)
                     } else {
                         // SFTP 양방향 동기화 모드
+                        val concurrency = try {
+                            com.sftpsync.app.utils.readTextFile("concurrency.txt")?.trim()?.toIntOrNull()
+                        } catch (e: Exception) {
+                            null
+                        } ?: run {
+                            val cores = Runtime.getRuntime().availableProcessors()
+                            maxOf(2, minOf(cores / 2, 8))
+                        }
+
                         val sftpClient = com.sftpsync.app.utils.createSftpClient(profile)
                         val runner = com.sftpsync.app.sync.BiSyncEngineRunner(sftpClient, localClient)
                         val lastState = com.sftpsync.app.utils.ProfileManager.loadState(profile.id)
                         val updatedState = runner.executeSync(
                             profile = profile,
                             lastState = lastState,
+                            concurrency = concurrency,
                             onProgress = { _, _ -> },
                             onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
                             checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리

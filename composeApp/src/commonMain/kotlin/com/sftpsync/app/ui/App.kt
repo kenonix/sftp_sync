@@ -1879,6 +1879,76 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
+                            "동기화 성능 설정",
+                            fontWeight = FontWeight.Bold,
+                            color = TextWhite,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        
+                        Text(
+                            "동시 작업 수 (멀티코어 동기화)",
+                            color = TextLight,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Slider(
+                                value = state.concurrency.toFloat(),
+                                onValueChange = { 
+                                    viewModel.updateConcurrency(it.toInt())
+                                },
+                                valueRange = 1f..16f,
+                                steps = 14,
+                                modifier = Modifier.weight(1f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = BlueGlow,
+                                    activeTrackColor = BlueGlow,
+                                    inactiveTrackColor = Slate600
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "${state.concurrency}개 작업",
+                                color = TextWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                modifier = Modifier.width(72.dp)
+                            )
+                        }
+                        
+                        Text(
+                            "• 현재 기기의 코어 수를 감지하여 자동으로 최적 성능으로 초기화되어 있습니다.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Text(
+                            "• 스레드가 많을수록 여러 파일을 동시에 전송하므로 다량/대용량 파일의 동기화 속도가 훨씬 빨라지지만, CPU와 네트워크 자원 점유율이 높아집니다.",
+                            color = TextMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Slate700)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
                             "애플리케이션 완전 종료",
                             fontWeight = FontWeight.Bold,
                             color = ErrorRed,

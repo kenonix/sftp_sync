@@ -30,7 +30,8 @@ data class UiState(
     val currentScreen: AppScreen = AppScreen.DASHBOARD,
     val editingProfile: SyncProfile? = null,
     val androidPermissionGranted: Boolean = true,
-    val directoryApprovalRequest: DirectoryApprovalRequest? = null
+    val directoryApprovalRequest: DirectoryApprovalRequest? = null,
+    val concurrency: Int = 2
 )
 
 enum class AppScreen {
@@ -60,6 +61,28 @@ class SyncViewModel {
         loadAllData()
     }
 
+    private fun getDefaultConcurrency(): Int {
+        return try {
+            val cores = Runtime.getRuntime().availableProcessors()
+            maxOf(2, minOf(cores / 2, 8))
+        } catch (e: Exception) {
+            2
+        }
+    }
+
+    fun updateConcurrency(concurrency: Int) {
+        state = state.copy(concurrency = concurrency)
+        coroutineScope.launch {
+            withContext(Dispatchers.Default) {
+                try {
+                    writeTextFile("concurrency.txt", concurrency.toString())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     fun loadAllData() {
         coroutineScope.launch {
             val loadedProfiles = withContext(Dispatchers.Default) {
@@ -68,6 +91,13 @@ class SyncViewModel {
             val loadedLogs = withContext(Dispatchers.Default) {
                 ProfileManager.loadLogs()
             }
+            val loadedConcurrency = withContext(Dispatchers.Default) {
+                try {
+                    readTextFile("concurrency.txt")?.trim()?.toIntOrNull()
+                } catch (e: Exception) {
+                    null
+                }
+            } ?: getDefaultConcurrency()
             
             val selected = if (loadedProfiles.isNotEmpty()) {
                 state.selectedProfile ?: loadedProfiles.first()
@@ -78,7 +108,8 @@ class SyncViewModel {
             state = state.copy(
                 profiles = loadedProfiles,
                 selectedProfile = selected,
-                logs = loadedLogs
+                logs = loadedLogs,
+                concurrency = loadedConcurrency
             )
             
             // Start watchers for all profiles
@@ -323,6 +354,7 @@ class SyncViewModel {
                         val updatedState = runner.executeSync(
                             profile = profile,
                             lastState = lastState,
+                            concurrency = state.concurrency,
                             onProgress = { statusText, progress ->
                                 state = state.copy(
                                     syncStatusText = statusText,

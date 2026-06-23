@@ -6,6 +6,12 @@ import com.sftpsync.app.sftp.SftpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.channels.Channel
+import com.sftpsync.app.utils.createSftpClient
 
 class BiSyncEngineRunner(
     private val sftpClient: SftpClient,
@@ -20,6 +26,7 @@ class BiSyncEngineRunner(
     suspend fun executeSync(
         profile: SyncProfile,
         lastState: SyncState,
+        concurrency: Int,
         onProgress: (String, Float) -> Unit,
         onLog: (SyncLog) -> Unit,
         checkDirectoryApproval: suspend (isLocal: Boolean, path: String) -> Boolean
@@ -40,6 +47,19 @@ class BiSyncEngineRunner(
             onLog(errLog)
             onProgress("SFTP 연결 실패", 1.0f)
             return@withContext lastState
+        }
+
+        val sftpClients = mutableListOf(sftpClient)
+        if (concurrency > 1) {
+            onProgress("추가 SFTP 연결 구성 중...", 0.05f)
+            for (i in 1 until concurrency) {
+                val client = createSftpClient(profile)
+                if (client.connect()) {
+                    sftpClients.add(client)
+                } else {
+                    client.disconnect()
+                }
+            }
         }
 
         // 1. Check local directory existence
@@ -142,6 +162,82 @@ class BiSyncEngineRunner(
                 .associateBy { it.relativePath }
 
             onProgress("동기화 변경사항 비교 중...", 0.20f)
+
+            val allPaths = (localFiles.keys + remoteFiles.keys + lastState.files.keys)
+                .filter { path -> !BiSyncEngine.isExcluded(path, profile.exclusions) }
+                .toSet()
+
+            val lastStateFiles = lastState.files
+            val pathsNeedingLocalHash = mutableListOf<String>()
+            val pathsNeedingRemoteHash = mutableListOf<String>()
+
+            for (path in allPaths) {
+                val local = localFiles[path]
+                val remote = remoteFiles[path]
+                val meta = lastStateFiles[path]
+
+                if ((local?.isDirectory == true) || (remote?.isDirectory == true)) {
+                    continue
+                }
+
+                if (local != null && remote != null && meta != null) {
+                    if (!(meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal)) {
+                        pathsNeedingLocalHash.add(path)
+                    }
+                    if (!(meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote)) {
+                        pathsNeedingRemoteHash.add(path)
+                    }
+                }
+            }
+
+            val localHashes = mutableMapOf<String, String>()
+            val remoteHashes = mutableMapOf<String, String>()
+            val hashMutex = Mutex()
+
+            if (pathsNeedingLocalHash.isNotEmpty()) {
+                onProgress("로컬 파일 해시 분석 중 (${pathsNeedingLocalHash.size}개)...", 0.16f)
+                val localChannel = Channel<String>(Channel.UNLIMITED)
+                pathsNeedingLocalHash.forEach { localChannel.trySend(it) }
+                localChannel.close()
+
+                coroutineScope {
+                    repeat(concurrency) {
+                        launch(Dispatchers.IO) {
+                            for (path in localChannel) {
+                                val hash = localClient.getFileHash("${profile.localPath}/$path")
+                                if (hash != null) {
+                                    hashMutex.withLock {
+                                        localHashes[path] = hash
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (pathsNeedingRemoteHash.isNotEmpty()) {
+                onProgress("원격 파일 해시 분석 중 (${pathsNeedingRemoteHash.size}개)...", 0.18f)
+                val remoteChannel = Channel<String>(Channel.UNLIMITED)
+                pathsNeedingRemoteHash.forEach { remoteChannel.trySend(it) }
+                remoteChannel.close()
+
+                coroutineScope {
+                    sftpClients.map { client ->
+                        launch(Dispatchers.IO) {
+                            for (path in remoteChannel) {
+                                val hash = client.getFileHash("${profile.remotePath}/$path")
+                                if (hash != null) {
+                                    hashMutex.withLock {
+                                        remoteHashes[path] = hash
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             val pendingActions = BiSyncEngine.calculateSyncActions(
                 localFiles = localFiles,
                 remoteFiles = remoteFiles,
@@ -149,12 +245,10 @@ class BiSyncEngineRunner(
                 exclusions = profile.exclusions,
                 syncCondition = profile.syncCondition,
                 getLocalHash = { relPath ->
-                    val localFile = "${profile.localPath}/$relPath"
-                    localClient.getFileHash(localFile)
+                    localHashes[relPath] ?: localClient.getFileHash("${profile.localPath}/$relPath")
                 },
                 getRemoteHash = { relPath ->
-                    val remoteFile = "${profile.remotePath}/$relPath"
-                    sftpClient.getFileHash(remoteFile)
+                    remoteHashes[relPath] ?: sftpClient.getFileHash("${profile.remotePath}/$relPath")
                 }
             )
 
@@ -176,176 +270,199 @@ class BiSyncEngineRunner(
             var completedActions = 0
             val newFilesMetadata = lastState.files.toMutableMap()
 
-            for (action in pendingActions) {
-                val currentProgress = 0.20f + (0.75f * (completedActions.toFloat() / totalActions.toFloat()))
-                val actionLabel = when (action.actionType) {
-                    SyncActionType.UPLOAD -> "업로드"
-                    SyncActionType.DOWNLOAD -> "다운로드"
-                    SyncActionType.DELETE_LOCAL -> "로컬 삭제"
-                    SyncActionType.DELETE_REMOTE -> "원격 삭제"
-                    SyncActionType.CONFLICT -> "충돌 해결"
-                    SyncActionType.NONE -> ""
-                }
-                
-                onProgress("$actionLabel 진행 중: ${action.relativePath}", currentProgress)
+            val progressMutex = Mutex()
+            val actionChannel = Channel<SyncAction>(Channel.UNLIMITED)
+            pendingActions.forEach { actionChannel.trySend(it) }
+            actionChannel.close()
 
-                try {
-                    when (action.actionType) {
-                        SyncActionType.UPLOAD -> {
-                            val localFile = "${profile.localPath}/${action.relativePath}"
-                            val remoteFile = "${profile.remotePath}/${action.relativePath}"
-                            
-                            val ok = sftpClient.uploadFile(localFile, remoteFile) { bytes ->
-                                // Optional fine-grained progress reporting
+            coroutineScope {
+                sftpClients.map { client ->
+                    launch(Dispatchers.IO) {
+                        for (action in actionChannel) {
+                            val actionLabel = when (action.actionType) {
+                                SyncActionType.UPLOAD -> "업로드"
+                                SyncActionType.DOWNLOAD -> "다운로드"
+                                SyncActionType.DELETE_LOCAL -> "로컬 삭제"
+                                SyncActionType.DELETE_REMOTE -> "원격 삭제"
+                                SyncActionType.CONFLICT -> "충돌 해결"
+                                SyncActionType.NONE -> ""
                             }
                             
-                            if (ok) {
-                                val remoteModified = sftpClient.getFileLastModified(remoteFile)
-                                val localModified = localFiles[action.relativePath]?.lastModified ?: System.currentTimeMillis()
-                                val localHash = localClient.getFileHash(localFile)
-                                
-                                newFilesMetadata[action.relativePath] = SyncFileMetadata(
-                                    relativePath = action.relativePath,
-                                    size = action.size,
-                                    lastModifiedLocal = localModified,
-                                    lastModifiedRemote = remoteModified,
-                                    isDirectory = false,
-                                    hash = localHash
-                                )
-                                
+                            var currentProgress = 0.20f
+                            progressMutex.withLock {
+                                currentProgress = 0.20f + (0.75f * (completedActions.toFloat() / totalActions.toFloat()))
+                            }
+                            onProgress("$actionLabel 진행 중: ${action.relativePath}", currentProgress)
+
+                            try {
+                                when (action.actionType) {
+                                    SyncActionType.UPLOAD -> {
+                                        val localFile = "${profile.localPath}/${action.relativePath}"
+                                        val remoteFile = "${profile.remotePath}/${action.relativePath}"
+                                        
+                                        val ok = client.uploadFile(localFile, remoteFile) { bytes -> }
+                                        
+                                        if (ok) {
+                                            val remoteModified = client.getFileLastModified(remoteFile)
+                                            val localModified = localFiles[action.relativePath]?.lastModified ?: System.currentTimeMillis()
+                                            val localHash = localClient.getFileHash(localFile)
+                                            
+                                            progressMutex.withLock {
+                                                newFilesMetadata[action.relativePath] = SyncFileMetadata(
+                                                    relativePath = action.relativePath,
+                                                    size = action.size,
+                                                    lastModifiedLocal = localModified,
+                                                    lastModifiedRemote = remoteModified,
+                                                    isDirectory = false,
+                                                    hash = localHash
+                                                )
+                                            }
+                                            
+                                            onLog(SyncLog(
+                                                timestamp = System.currentTimeMillis(),
+                                                profileId = profile.id,
+                                                profileName = profile.name,
+                                                relativePath = action.relativePath,
+                                                actionType = "UPLOAD",
+                                                status = SyncLogStatus.SUCCESS,
+                                                message = "업로드 완료 (크기: ${formatSize(action.size)})"
+                                            ))
+                                        } else {
+                                            throw Exception("SFTP 업로드 실패")
+                                        }
+                                    }
+
+                                    SyncActionType.DOWNLOAD -> {
+                                        val localFile = "${profile.localPath}/${action.relativePath}"
+                                        val remoteFile = "${profile.remotePath}/${action.relativePath}"
+                                        
+                                        val parentFile = java.io.File(localFile).parentFile
+                                        if (parentFile != null && !parentFile.exists()) {
+                                            progressMutex.withLock {
+                                                if (!parentFile.exists()) {
+                                                    parentFile.mkdirs()
+                                                }
+                                            }
+                                        }
+                                        
+                                        val ok = client.downloadFile(remoteFile, localFile) { bytes -> }
+                                        
+                                        if (ok) {
+                                            val remoteModified = action.remoteLastModified
+                                            localClient.setLastModified(localFile, remoteModified)
+                                            val localHash = localClient.getFileHash(localFile)
+                                            
+                                            progressMutex.withLock {
+                                                newFilesMetadata[action.relativePath] = SyncFileMetadata(
+                                                    relativePath = action.relativePath,
+                                                    size = action.size,
+                                                    lastModifiedLocal = remoteModified,
+                                                    lastModifiedRemote = remoteModified,
+                                                    isDirectory = false,
+                                                    hash = localHash
+                                                )
+                                            }
+                                            
+                                            onLog(SyncLog(
+                                                timestamp = System.currentTimeMillis(),
+                                                profileId = profile.id,
+                                                profileName = profile.name,
+                                                relativePath = action.relativePath,
+                                                actionType = "DOWNLOAD",
+                                                status = SyncLogStatus.SUCCESS,
+                                                message = "다운로드 완료 (크기: ${formatSize(action.size)})"
+                                            ))
+                                        } else {
+                                            throw Exception("SFTP 다운로드 실패")
+                                        }
+                                    }
+
+                                    SyncActionType.DELETE_LOCAL -> {
+                                        val localFile = "${profile.localPath}/${action.relativePath}"
+                                        val ok = localClient.deleteFile(localFile)
+                                        if (ok || !localClient.exists(localFile)) {
+                                            progressMutex.withLock {
+                                                newFilesMetadata.remove(action.relativePath)
+                                            }
+                                            onLog(SyncLog(
+                                                timestamp = System.currentTimeMillis(),
+                                                profileId = profile.id,
+                                                profileName = profile.name,
+                                                relativePath = action.relativePath,
+                                                actionType = "DELETE_LOCAL",
+                                                status = SyncLogStatus.SUCCESS,
+                                                message = "로컬 파일 삭제 완료"
+                                            ))
+                                        } else {
+                                            throw Exception("로컬 파일 삭제 실패")
+                                        }
+                                    }
+
+                                    SyncActionType.DELETE_REMOTE -> {
+                                        val remoteFile = "${profile.remotePath}/${action.relativePath}"
+                                        val ok = client.deleteFile(remoteFile)
+                                        if (ok) {
+                                            progressMutex.withLock {
+                                                newFilesMetadata.remove(action.relativePath)
+                                            }
+                                            onLog(SyncLog(
+                                                timestamp = System.currentTimeMillis(),
+                                                profileId = profile.id,
+                                                profileName = profile.name,
+                                                relativePath = action.relativePath,
+                                                actionType = "DELETE_REMOTE",
+                                                status = SyncLogStatus.SUCCESS,
+                                                message = "원격 파일 삭제 완료"
+                                            ))
+                                        } else {
+                                            throw Exception("원격 파일 삭제 실패")
+                                        }
+                                    }
+
+                                    SyncActionType.CONFLICT -> {
+                                        val resolved = BiSyncEngine.resolveConflict(action, profile.conflictStrategy)
+                                        if (resolved != null && resolved.actionType != SyncActionType.CONFLICT) {
+                                            val resolvedAction = action.copy(actionType = resolved.actionType)
+                                            progressMutex.withLock {
+                                                runResolvedConflict(client, resolvedAction, profile, localFiles, remoteFiles, newFilesMetadata, onLog)
+                                            }
+                                        } else if (profile.conflictStrategy == ConflictStrategy.KEEP_BOTH) {
+                                            progressMutex.withLock {
+                                                executeKeepBoth(client, action, profile, localFiles, remoteFiles, newFilesMetadata, onLog)
+                                            }
+                                        } else {
+                                            onLog(SyncLog(
+                                                timestamp = System.currentTimeMillis(),
+                                                profileId = profile.id,
+                                                profileName = profile.name,
+                                                relativePath = action.relativePath,
+                                                actionType = "CONFLICT",
+                                                status = SyncLogStatus.SKIPPED,
+                                                message = "충돌이 감지되어 건너뛰었습니다 (수동 확인 필요)"
+                                            ))
+                                        }
+                                    }
+                                    else -> {}
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                                 onLog(SyncLog(
                                     timestamp = System.currentTimeMillis(),
                                     profileId = profile.id,
                                     profileName = profile.name,
                                     relativePath = action.relativePath,
-                                    actionType = "UPLOAD",
-                                    status = SyncLogStatus.SUCCESS,
-                                    message = "업로드 완료 (크기: ${formatSize(action.size)})"
+                                    actionType = action.actionType.name,
+                                    status = SyncLogStatus.ERROR,
+                                    message = "작업 실패: ${e.message}"
                                 ))
-                            } else {
-                                throw Exception("SFTP 업로드 실패")
+                            } finally {
+                                progressMutex.withLock {
+                                    completedActions++
+                                }
                             }
                         }
-
-                        SyncActionType.DOWNLOAD -> {
-                            val localFile = "${profile.localPath}/${action.relativePath}"
-                            val remoteFile = "${profile.remotePath}/${action.relativePath}"
-                            
-                            // Ensure local parent directories exist
-                            val parentFile = java.io.File(localFile).parentFile
-                            if (parentFile != null && !parentFile.exists()) {
-                                parentFile.mkdirs()
-                            }
-                            
-                            val ok = sftpClient.downloadFile(remoteFile, localFile) { bytes -> }
-                            
-                            if (ok) {
-                                // Sync timestamps: set local modification time to match remote
-                                val remoteModified = action.remoteLastModified
-                                localClient.setLastModified(localFile, remoteModified)
-                                val localHash = localClient.getFileHash(localFile)
-                                
-                                newFilesMetadata[action.relativePath] = SyncFileMetadata(
-                                    relativePath = action.relativePath,
-                                    size = action.size,
-                                    lastModifiedLocal = remoteModified,
-                                    lastModifiedRemote = remoteModified,
-                                    isDirectory = false,
-                                    hash = localHash
-                                )
-                                
-                                onLog(SyncLog(
-                                    timestamp = System.currentTimeMillis(),
-                                    profileId = profile.id,
-                                    profileName = profile.name,
-                                    relativePath = action.relativePath,
-                                    actionType = "DOWNLOAD",
-                                    status = SyncLogStatus.SUCCESS,
-                                    message = "다운로드 완료 (크기: ${formatSize(action.size)})"
-                                ))
-                            } else {
-                                throw Exception("SFTP 다운로드 실패")
-                            }
-                        }
-
-                        SyncActionType.DELETE_LOCAL -> {
-                            val localFile = "${profile.localPath}/${action.relativePath}"
-                            val ok = localClient.deleteFile(localFile)
-                            if (ok || !localClient.exists(localFile)) {
-                                newFilesMetadata.remove(action.relativePath)
-                                onLog(SyncLog(
-                                    timestamp = System.currentTimeMillis(),
-                                    profileId = profile.id,
-                                    profileName = profile.name,
-                                    relativePath = action.relativePath,
-                                    actionType = "DELETE_LOCAL",
-                                    status = SyncLogStatus.SUCCESS,
-                                    message = "로컬 파일 삭제 완료"
-                                ))
-                            } else {
-                                throw Exception("로컬 파일 삭제 실패")
-                            }
-                        }
-
-                        SyncActionType.DELETE_REMOTE -> {
-                            val remoteFile = "${profile.remotePath}/${action.relativePath}"
-                            val ok = sftpClient.deleteFile(remoteFile)
-                            if (ok) {
-                                newFilesMetadata.remove(action.relativePath)
-                                onLog(SyncLog(
-                                    timestamp = System.currentTimeMillis(),
-                                    profileId = profile.id,
-                                    profileName = profile.name,
-                                    relativePath = action.relativePath,
-                                    actionType = "DELETE_REMOTE",
-                                    status = SyncLogStatus.SUCCESS,
-                                    message = "원격 파일 삭제 완료"
-                                ))
-                            } else {
-                                throw Exception("원격 파일 삭제 실패")
-                            }
-                        }
-
-                        SyncActionType.CONFLICT -> {
-                            // Resolve conflict based on strategy
-                            val resolved = BiSyncEngine.resolveConflict(action, profile.conflictStrategy)
-                            if (resolved != null && resolved.actionType != SyncActionType.CONFLICT) {
-                                // Execute resolved action (either UPLOAD or DOWNLOAD)
-                                val resolvedAction = action.copy(actionType = resolved.actionType)
-                                // We call executeSync recursively for just this single action to keep it DRY!
-                                // Wait, running it via a local helper is cleaner and avoids full sync recursion.
-                                runResolvedConflict(resolvedAction, profile, localFiles, remoteFiles, newFilesMetadata, onLog)
-                            } else if (profile.conflictStrategy == ConflictStrategy.KEEP_BOTH) {
-                                // KEEP_BOTH strategy: Rename files on both sides to keep both contents
-                                executeKeepBoth(action, profile, localFiles, remoteFiles, newFilesMetadata, onLog)
-                            } else {
-                                onLog(SyncLog(
-                                    timestamp = System.currentTimeMillis(),
-                                    profileId = profile.id,
-                                    profileName = profile.name,
-                                    relativePath = action.relativePath,
-                                    actionType = "CONFLICT",
-                                    status = SyncLogStatus.SKIPPED,
-                                    message = "충돌이 감지되어 건너뛰었습니다 (수동 확인 필요)"
-                                ))
-                            }
-                        }
-                        else -> {}
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    onLog(SyncLog(
-                        timestamp = System.currentTimeMillis(),
-                        profileId = profile.id,
-                        profileName = profile.name,
-                        relativePath = action.relativePath,
-                        actionType = action.actionType.name,
-                        status = SyncLogStatus.ERROR,
-                        message = "작업 실패: ${e.message}"
-                    ))
                 }
-                
-                completedActions++
             }
 
             onProgress("동기화 완료", 1.0f)
@@ -356,11 +473,23 @@ class BiSyncEngineRunner(
             )
 
         } finally {
+            if (concurrency > 1) {
+                sftpClients.forEachIndexed { index, client ->
+                    if (index > 0) {
+                        try {
+                            client.disconnect()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            }
             sftpClient.disconnect()
         }
     }
 
     private fun runResolvedConflict(
+        client: SftpClient,
         resolved: SyncAction,
         profile: SyncProfile,
         localFiles: Map<String, SyncFile>,
@@ -372,9 +501,9 @@ class BiSyncEngineRunner(
         val remoteFile = "${profile.remotePath}/${resolved.relativePath}"
         
         if (resolved.actionType == SyncActionType.UPLOAD) {
-            val ok = sftpClient.uploadFile(localFile, remoteFile) {}
+            val ok = client.uploadFile(localFile, remoteFile) {}
             if (ok) {
-                val remoteModified = sftpClient.getFileLastModified(remoteFile)
+                val remoteModified = client.getFileLastModified(remoteFile)
                 val localModified = localFiles[resolved.relativePath]?.lastModified ?: System.currentTimeMillis()
                 val localHash = localClient.getFileHash(localFile)
                 newMetadata[resolved.relativePath] = SyncFileMetadata(
@@ -398,7 +527,7 @@ class BiSyncEngineRunner(
                 throw Exception("충돌 해결 중 업로드 실패")
             }
         } else if (resolved.actionType == SyncActionType.DOWNLOAD) {
-            val ok = sftpClient.downloadFile(remoteFile, localFile) {}
+            val ok = client.downloadFile(remoteFile, localFile) {}
             if (ok) {
                 val remoteModified = resolved.remoteLastModified
                 localClient.setLastModified(localFile, remoteModified)
@@ -427,6 +556,7 @@ class BiSyncEngineRunner(
     }
 
     private fun executeKeepBoth(
+        client: SftpClient,
         action: SyncAction,
         profile: SyncProfile,
         localFiles: Map<String, SyncFile>,
@@ -469,7 +599,7 @@ class BiSyncEngineRunner(
         val remoteFileConflict = "${profile.remotePath}/$finalRemoteRenamed"
 
         // 1. Download Remote Original to Local Conflict file
-        val downloadOk = sftpClient.downloadFile(remoteFileOriginal, localFileConflict) {}
+        val downloadOk = client.downloadFile(remoteFileOriginal, localFileConflict) {}
         if (!downloadOk) {
             throw Exception("원격 충돌 파일 다운로드 실패")
         }
@@ -479,13 +609,13 @@ class BiSyncEngineRunner(
         localClient.setLastModified(localFileConflict, remoteOriginal.lastModified)
 
         // 3. Upload Local Original to Remote Original (Client wins/overwrites remote original)
-        val uploadOriginalOk = sftpClient.uploadFile(localFileOriginal, remoteFileOriginal) {}
+        val uploadOriginalOk = client.uploadFile(localFileOriginal, remoteFileOriginal) {}
         if (!uploadOriginalOk) {
             throw Exception("원격 원본 파일 업로드 실패")
         }
 
         // 4. Upload Local Conflict file to Remote Conflict file
-        val uploadConflictOk = sftpClient.uploadFile(localFileConflict, remoteFileConflict) {}
+        val uploadConflictOk = client.uploadFile(localFileConflict, remoteFileConflict) {}
         if (!uploadConflictOk) {
             throw Exception("이름이 변경된 충돌 파일 업로드 실패")
         }
@@ -493,7 +623,7 @@ class BiSyncEngineRunner(
         // 5. Update metadata state: update original (local original) and add the conflict file
         val localOriginalFile = java.io.File(localFileOriginal)
         val localOriginalModifiedTime = localOriginalFile.lastModified()
-        val remoteOriginalModifiedTime = sftpClient.getFileLastModified(remoteFileOriginal)
+        val remoteOriginalModifiedTime = client.getFileLastModified(remoteFileOriginal)
         val localOriginalHash = localClient.getFileHash(localFileOriginal)
 
         newMetadata[relPath] = SyncFileMetadata(
