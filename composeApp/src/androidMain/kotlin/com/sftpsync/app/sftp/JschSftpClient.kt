@@ -292,32 +292,35 @@ class JschSftpClient(
             val escapedPath = remoteFilePath.replace("'", "'\\''")
             channel.setCommand("sha256sum '$escapedPath' || shasum -a 256 '$escapedPath' || openssl dgst -sha256 '$escapedPath'")
             val inputStream = channel.inputStream
-            val errorStream = channel.errStream
-            channel.connect(3000)
+            channel.connect(5000)
             
-            val output = inputStream.bufferedReader().use { it.readText() }
-            val error = errorStream.bufferedReader().use { it.readText() }
-            
+            // 버그 #4 수정: 채널이 닫힐 때까지 대기한 후 스트림 읽기 (타임아웃 5초)
             val start = System.currentTimeMillis()
-            while (!channel.isClosed && (System.currentTimeMillis() - start) < 2000) {
+            while (!channel.isClosed && (System.currentTimeMillis() - start) < 5000) {
                 Thread.sleep(50)
             }
             
-            if (channel.exitStatus == 0) {
-                val parts = output.trim().split(Regex("\\s+"))
-                val first = parts.firstOrNull() ?: ""
-                if (first.length == 64 && first.all { it.isLetterOrDigit() }) {
-                    first
-                } else {
-                    val last = parts.lastOrNull() ?: ""
-                    if (last.length == 64 && last.all { it.isLetterOrDigit() }) {
-                        last
-                    } else {
-                        null
-                    }
-                }
-            } else {
+            // 채널이 타임아웃 내에 닫히지 않으면 포기, 닫힌 후에만 안전하게 스트림 읽기
+            if (!channel.isClosed) {
                 null
+            } else {
+                val output = inputStream.bufferedReader().use { it.readText() }
+                if (channel.exitStatus == 0) {
+                    val parts = output.trim().split(Regex("\\s+"))
+                    val first = parts.firstOrNull() ?: ""
+                    if (first.length == 64 && first.all { it.isLetterOrDigit() }) {
+                        first
+                    } else {
+                        val last = parts.lastOrNull() ?: ""
+                        if (last.length == 64 && last.all { it.isLetterOrDigit() }) {
+                            last
+                        } else {
+                            null
+                        }
+                    }
+                } else {
+                    null
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

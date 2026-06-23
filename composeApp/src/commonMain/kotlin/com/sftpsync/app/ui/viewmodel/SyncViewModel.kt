@@ -49,6 +49,9 @@ class SyncViewModel {
     private val debounceJobs = HashMap<String, Job>()
     // Active remote polling jobs for profiles with auto-sync enabled (30 seconds polling)
     private val remotePollingJobs = HashMap<String, Job>()
+    // 동기화 완료 후 자동 재트리거 방지용 쿨다운 타임스탬프 (밀리초)
+    @Volatile
+    private var syncCooldownUntil: Long = 0L
 
     var state by mutableStateOf(UiState())
         private set
@@ -231,9 +234,15 @@ class SyncViewModel {
      * UI 스레드 상에서 구동되어 실시간 프로그레스 바 및 상태 메시지를 출력합니다.
      */
     fun startSync(profile: SyncProfile) {
-        // UI가 이미 동기화 중이거나 백그라운드 서비스가 구동 중인 경우 무시 (동시성 락 충돌 방지)
+        // UI가 이미 동기화 중이거나 백그라운드 서비스가 구동 중인 경우 사용자에게 피드백 제공
         synchronized(SyncLock) {
-            if (state.isSyncing || SyncLock.isSyncing) return
+            if (state.isSyncing || SyncLock.isSyncing) {
+                // 버그 #3 수정: 락 충돌 시 사용자에게 피드백 메시지 표시
+                state = state.copy(
+                    syncStatusText = "이미 동기화가 진행 중입니다. 완료 후 다시 시도해 주세요."
+                )
+                return
+            }
             SyncLock.isSyncing = true // 전역 동시 구동 차단 락 활성화
         }
         
@@ -242,6 +251,9 @@ class SyncViewModel {
             syncProgress = 0f,
             syncStatusText = "동기화 준비 중..."
         )
+
+        // 버그 #5 수정: 동기화 시작 시 자동 동기화 감시자(데스크톱)를 일시 정지하여 재트리거 방지
+        pauseAutoSyncWatchers()
 
         try {
             coroutineScope.launch {
@@ -355,19 +367,26 @@ class SyncViewModel {
                         syncStatusText = "동기화 실패: ${e.message ?: "알 수 없는 오류"}"
                     )
                 } finally {
+                    // 버그 #1 수정: state.isSyncing도 반드시 해제 (버튼 영구 비활성화 방지)
+                    state = state.copy(isSyncing = false)
                     synchronized(SyncLock) {
                         SyncLock.isSyncing = false
                     }
+                    // 버그 #5 수정: 동기화 완료 후 5초 쿨다운 설정 후 감시자 재활성화
+                    syncCooldownUntil = System.currentTimeMillis() + 5000L
+                    resumeAutoSyncWatchers()
                 }
             }
         } catch (e: Exception) {
-            synchronized(SyncLock) {
-                SyncLock.isSyncing = false
-            }
+            // 버그 #1 수정: launch 실패 시에도 state.isSyncing 해제
             state = state.copy(
                 isSyncing = false,
                 syncStatusText = "동기화 시작 실패: ${e.message ?: "알 수 없는 오류"}"
             )
+            synchronized(SyncLock) {
+                SyncLock.isSyncing = false
+            }
+            resumeAutoSyncWatchers()
             e.printStackTrace()
         }
     }
@@ -421,8 +440,10 @@ class SyncViewModel {
             remotePollingJobs[profile.id] = coroutineScope.launch {
                 while (isActive) {
                     delay(30000) // Wait for 30 seconds
+                    // 버그 #2/#5 수정: 쿨다운 및 SyncLock도 확인
+                    if (System.currentTimeMillis() < syncCooldownUntil) continue
                     val curProfile = state.profiles.firstOrNull { it.id == profile.id }
-                    if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing) {
+                    if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
                         startSync(curProfile)
                     }
                 }
@@ -434,9 +455,49 @@ class SyncViewModel {
         debounceJobs[profileId]?.cancel()
         debounceJobs[profileId] = coroutineScope.launch {
             delay(3000) // 3-second debouncing
+            // 버그 #5 수정: 쿨다운 기간 내에는 자동 동기화 트리거 무시
+            if (System.currentTimeMillis() < syncCooldownUntil) return@launch
             val profile = state.profiles.firstOrNull { it.id == profileId }
-            if (profile != null && profile.autoSyncEnabled && !state.isSyncing) {
+            if (profile != null && profile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
                 startSync(profile)
+            }
+        }
+    }
+
+    /**
+     * 동기화 실행 중 자동 동기화 감시자를 일시 정지합니다.
+     * 동기화 엔진이 로컬에 파일을 쓸 때 파일 감시자가 변경을 감지하여
+     * 즉시 재동기화를 트리거하는 무한 루프를 방지합니다.
+     */
+    private fun pauseAutoSyncWatchers() {
+        // 데스크톱에서만 뷰모델이 감시자를 관리함 (Android는 서비스가 관리)
+        if (getPlatformName() == "Android") return
+        debounceJobs.values.forEach { it.cancel() }
+        debounceJobs.clear()
+        remotePollingJobs.values.forEach { it.cancel() }
+        remotePollingJobs.clear()
+    }
+
+    /**
+     * 동기화 완료 후 자동 동기화 감시자를 재활성화합니다.
+     */
+    private fun resumeAutoSyncWatchers() {
+        if (getPlatformName() == "Android") return
+        val profiles = state.profiles.filter { it.autoSyncEnabled }
+        for (profile in profiles) {
+            // 원격 폴링 재시작 (파일 감시자는 loadAllData()에서 재등록됨)
+            remotePollingJobs[profile.id] = coroutineScope.launch {
+                // 쿨다운 대기
+                val remaining = syncCooldownUntil - System.currentTimeMillis()
+                if (remaining > 0) delay(remaining)
+                while (isActive) {
+                    delay(30000)
+                    if (System.currentTimeMillis() < syncCooldownUntil) continue
+                    val curProfile = state.profiles.firstOrNull { it.id == profile.id }
+                    if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
+                        startSync(curProfile)
+                    }
+                }
             }
         }
     }
