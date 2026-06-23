@@ -13,6 +13,7 @@ interface SftpClient {
     fun createDirectory(remotePath: String): Boolean
     fun getFileLastModified(remoteFilePath: String): Long
     fun exists(remotePath: String): Boolean
+    fun getFileHash(remoteFilePath: String): String?
 }
 
 interface LocalFileClient {
@@ -21,4 +22,5 @@ interface LocalFileClient {
     fun createDirectory(localPath: String): Boolean
     fun setLastModified(localFilePath: String, timestamp: Long): Boolean
     fun exists(localFilePath: String): Boolean
+    fun getFileHash(localFilePath: String): String?
 }

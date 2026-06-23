@@ -147,7 +147,15 @@ class BiSyncEngineRunner(
                 remoteFiles = remoteFiles,
                 lastState = lastState,
                 exclusions = profile.exclusions,
-                syncCondition = profile.syncCondition
+                syncCondition = profile.syncCondition,
+                getLocalHash = { relPath ->
+                    val localFile = "${profile.localPath}/$relPath"
+                    localClient.getFileHash(localFile)
+                },
+                getRemoteHash = { relPath ->
+                    val remoteFile = "${profile.remotePath}/$relPath"
+                    sftpClient.getFileHash(remoteFile)
+                }
             )
 
             if (pendingActions.isEmpty()) {
@@ -194,13 +202,15 @@ class BiSyncEngineRunner(
                             if (ok) {
                                 val remoteModified = sftpClient.getFileLastModified(remoteFile)
                                 val localModified = localFiles[action.relativePath]?.lastModified ?: System.currentTimeMillis()
+                                val localHash = localClient.getFileHash(localFile)
                                 
                                 newFilesMetadata[action.relativePath] = SyncFileMetadata(
                                     relativePath = action.relativePath,
                                     size = action.size,
                                     lastModifiedLocal = localModified,
                                     lastModifiedRemote = remoteModified,
-                                    isDirectory = false
+                                    isDirectory = false,
+                                    hash = localHash
                                 )
                                 
                                 onLog(SyncLog(
@@ -233,13 +243,15 @@ class BiSyncEngineRunner(
                                 // Sync timestamps: set local modification time to match remote
                                 val remoteModified = action.remoteLastModified
                                 localClient.setLastModified(localFile, remoteModified)
+                                val localHash = localClient.getFileHash(localFile)
                                 
                                 newFilesMetadata[action.relativePath] = SyncFileMetadata(
                                     relativePath = action.relativePath,
                                     size = action.size,
                                     lastModifiedLocal = remoteModified,
                                     lastModifiedRemote = remoteModified,
-                                    isDirectory = false
+                                    isDirectory = false,
+                                    hash = localHash
                                 )
                                 
                                 onLog(SyncLog(
@@ -364,12 +376,14 @@ class BiSyncEngineRunner(
             if (ok) {
                 val remoteModified = sftpClient.getFileLastModified(remoteFile)
                 val localModified = localFiles[resolved.relativePath]?.lastModified ?: System.currentTimeMillis()
+                val localHash = localClient.getFileHash(localFile)
                 newMetadata[resolved.relativePath] = SyncFileMetadata(
                     relativePath = resolved.relativePath,
                     size = resolved.size,
                     lastModifiedLocal = localModified,
                     lastModifiedRemote = remoteModified,
-                    isDirectory = false
+                    isDirectory = false,
+                    hash = localHash
                 )
                 onLog(SyncLog(
                     timestamp = System.currentTimeMillis(),
@@ -388,12 +402,14 @@ class BiSyncEngineRunner(
             if (ok) {
                 val remoteModified = resolved.remoteLastModified
                 localClient.setLastModified(localFile, remoteModified)
+                val localHash = localClient.getFileHash(localFile)
                 newMetadata[resolved.relativePath] = SyncFileMetadata(
                     relativePath = resolved.relativePath,
                     size = resolved.size,
                     lastModifiedLocal = remoteModified,
                     lastModifiedRemote = remoteModified,
-                    isDirectory = false
+                    isDirectory = false,
+                    hash = localHash
                 )
                 onLog(SyncLog(
                     timestamp = System.currentTimeMillis(),
@@ -478,21 +494,25 @@ class BiSyncEngineRunner(
         // Record local renamed metadata
         val localModifiedTime = renamedLocalFileObj.lastModified()
         val localUploadedRemoteTime = sftpClient.getFileLastModified(remoteFileLocalRenamed)
+        val localRenamedHash = localClient.getFileHash(localFileRenamed)
         newMetadata[localRenamed] = SyncFileMetadata(
             relativePath = localRenamed,
             size = renamedLocalFileObj.length(),
             lastModifiedLocal = localModifiedTime,
             lastModifiedRemote = localUploadedRemoteTime,
-            isDirectory = false
+            isDirectory = false,
+            hash = localRenamedHash
         )
 
         // Record remote renamed metadata
+        val remoteRenamedHash = localClient.getFileHash(localFileRemoteRenamed)
         newMetadata[remoteRenamed] = SyncFileMetadata(
             relativePath = remoteRenamed,
             size = java.io.File(localFileRemoteRenamed).length(),
             lastModifiedLocal = remoteOriginal.lastModified,
             lastModifiedRemote = remoteOriginal.lastModified,
-            isDirectory = false
+            isDirectory = false,
+            hash = remoteRenamedHash
         )
 
         onLog(SyncLog(

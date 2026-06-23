@@ -129,6 +129,9 @@ class JschSftpClient(
         if (!isConnected && !connect()) return false
         val sftp = channelSftp ?: return false
 
+        val localTempFile = java.io.File("$localFilePath.tmp")
+        val localTargetFile = java.io.File(localFilePath)
+
         return try {
             val monitor = object : SftpProgressMonitor {
                 private var bytesTransferred = 0L
@@ -140,10 +143,32 @@ class JschSftpClient(
                 }
                 override fun end() {}
             }
-            sftp.get(remoteFilePath, localFilePath, monitor)
-            true
+            
+            // Ensure local parent directories exist
+            val parentFile = localTargetFile.parentFile
+            if (parentFile != null && !parentFile.exists()) {
+                parentFile.mkdirs()
+            }
+            
+            sftp.get(remoteFilePath, localTempFile.absolutePath, monitor)
+            
+            if (localTargetFile.exists()) {
+                localTargetFile.delete()
+            }
+            val ok = localTempFile.renameTo(localTargetFile)
+            if (!ok) {
+                if (localTempFile.exists()) {
+                    localTempFile.delete()
+                }
+                false
+            } else {
+                true
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+            if (localTempFile.exists()) {
+                localTempFile.delete()
+            }
             false
         }
     }
@@ -155,6 +180,8 @@ class JschSftpClient(
     ): Boolean {
         if (!isConnected && !connect()) return false
         val sftp = channelSftp ?: return false
+
+        val tempRemotePath = "$remoteFilePath.tmp"
 
         return try {
             ensureRemoteParentDirsExist(remoteFilePath)
@@ -169,10 +196,20 @@ class JschSftpClient(
                 }
                 override fun end() {}
             }
-            sftp.put(localFilePath, remoteFilePath, monitor)
+            sftp.put(localFilePath, tempRemotePath, monitor)
+            
+            if (exists(remoteFilePath)) {
+                deleteFile(remoteFilePath)
+            }
+            sftp.rename(tempRemotePath, remoteFilePath)
             true
         } catch (e: Exception) {
             e.printStackTrace()
+            try {
+                if (exists(tempRemotePath)) {
+                    sftp.rm(tempRemotePath)
+                }
+            } catch (ex: Exception) {}
             false
         }
     }
@@ -244,6 +281,79 @@ class JschSftpClient(
             true
         } catch (e: Exception) {
             false
+        }
+    }
+
+    override fun getFileHash(remoteFilePath: String): String? {
+        val hash = getFileHashViaExec(remoteFilePath)
+        if (hash != null) return hash
+        return getFileHashViaStreaming(remoteFilePath)
+    }
+
+    private fun getFileHashViaExec(remoteFilePath: String): String? {
+        val sess = session ?: return null
+        if (!sess.isConnected) return null
+        var channel: ChannelExec? = null
+        return try {
+            channel = sess.openChannel("exec") as ChannelExec
+            val escapedPath = remoteFilePath.replace("'", "'\\''")
+            channel.setCommand("sha256sum '$escapedPath' || shasum -a 256 '$escapedPath' || openssl dgst -sha256 '$escapedPath'")
+            val inputStream = channel.inputStream
+            val errorStream = channel.errStream
+            channel.connect(3000)
+            
+            val output = inputStream.bufferedReader().use { it.readText() }
+            val error = errorStream.bufferedReader().use { it.readText() }
+            
+            val start = System.currentTimeMillis()
+            while (!channel.isClosed && (System.currentTimeMillis() - start) < 2000) {
+                Thread.sleep(50)
+            }
+            
+            if (channel.exitStatus == 0) {
+                val parts = output.trim().split(Regex("\\s+"))
+                val first = parts.firstOrNull() ?: ""
+                if (first.length == 64 && first.all { it.isLetterOrDigit() }) {
+                    first
+                } else {
+                    val last = parts.lastOrNull() ?: ""
+                    if (last.length == 64 && last.all { it.isLetterOrDigit() }) {
+                        last
+                    } else {
+                        null
+                    }
+                }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            try {
+                channel?.disconnect()
+            } catch (e: Exception) {}
+        }
+    }
+
+    private fun getFileHashViaStreaming(remoteFilePath: String): String? {
+        if (!isConnected && !connect()) return null
+        val sftp = channelSftp ?: return null
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            sftp.get(remoteFilePath).use { inputStream ->
+                val buffer = ByteArray(8192)
+                var bytesRead = inputStream.read(buffer)
+                while (bytesRead != -1) {
+                    digest.update(buffer, 0, bytesRead)
+                    bytesRead = inputStream.read(buffer)
+                }
+            }
+            val hashBytes = digest.digest()
+            hashBytes.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 }

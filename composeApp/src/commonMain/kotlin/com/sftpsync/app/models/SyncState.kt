@@ -8,7 +8,8 @@ data class SyncFileMetadata(
     val size: Long,
     val lastModifiedLocal: Long,
     val lastModifiedRemote: Long,
-    val isDirectory: Boolean
+    val isDirectory: Boolean,
+    val hash: String? = null
 )
 
 @Serializable

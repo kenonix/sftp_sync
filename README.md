@@ -41,18 +41,31 @@
 
 ## 🛠️ 시스템 아키텍처 (Architecture)
 
-동기화 엔진은 다음과 같은 3-Way 결정 매트릭스에 기반하여 파일의 운명을 결정합니다.
+본 프로젝트는 단순한 파일 비교 전송 방식이 아닌, 전문적인 상태 기반 양방향 동기화 아키텍처를 따릅니다.
 
+### 1. 4단계 동기화 수명 주기 (4-Stage Sync Lifecycle)
+동기화는 다음과 같은 명확한 단계를 거쳐 안전하게 수행됩니다:
+1. **스캔 (Scan)**: 로컬 파일 시스템 및 원격 SFTP 서버로부터 파일 목록(경로, 크기, 수정 시각)을 병렬로 수집합니다.
+2. **비교 (Compare)**: 수집된 목록을 로컬 상태 DB에 기록된 마지막 성공 상태 스냅샷과 교차 비교합니다.
+   * **SHA-256 해시 기반 검증**: 파일 수정 시간(mtime)의 신뢰성 문제를 보완하기 위해 파일 크기 및 SHA-256 해시를 기본 검증 수단으로 삼습니다. 변경이 없는 파일은 해시 계산을 건너뛰어 성능을 최적화합니다.
+3. **해결 (Resolve)**: 충돌(`CONFLICT`) 감지 시 설정된 충돌 해결 정책(`NEWER_WINS`, `LOCAL_WINS`, `REMOTE_WINS`, `KEEP_BOTH`)을 적용합니다. 양쪽 내용이 실질적으로 동일하면(`localHash == remoteHash`) 충돌 대신 동기화 성공 상태로 자동 처리합니다.
+4. **실행 (Execute)**: 검증된 동작에 따라 업로드, 다운로드, 삭제를 수행하고 최종 성공 시 로컬 상태 DB를 업데이트합니다.
+
+### 2. 원자적 전송 (Atomic Write & Rename)
+전송 중 네트워크 끊김이나 앱 강제 종료로 인한 파일 손상을 원천 차단하기 위해 원자적 쓰기 메커니즘을 지원합니다.
+* **원격 업로드**: 먼저 원격지의 임시 경로(예: `파일명.tmp`)로 업로드 완료 후, SFTP의 `rename` 명령어를 사용하여 원본 대상 위치로 한 번에 교체합니다.
+* **로컬 다운로드**: 로컬 임시 파일(예: `파일명.tmp`)로 다운로드 후 성공 시에만 기존 파일을 교체하는 원자적 파일 이동 연산을 수행합니다.
+
+### 3. 컴포넌트 구조
 ```mermaid
 graph TD
-    A["동기화 시작"] --> B{"마지막 동기화 스냅샷 기록 존재 여부?"}
-    B -- "없음" --> C["신규 파일 업로드 또는 다운로드 진행"]
-    B -- "있음" --> D{"로컬 & 원격 파일 모두 수정되었는가?"}
-    D -- "예" --> E["⚠️ 충돌 상태 돌입 및 선택한 전략에 따라 해결"]
-    D -- "아니오" --> F{"한쪽에서만 파일이 삭제되었는가?"}
-    F -- "예" --> G["삭제 전파 진행 및 상대 경로 파일 삭제"]
-    F -- "아니오" --> H["변경된 쪽에서 다른 쪽으로 수정 반영"]
-end
+    BiSyncEngineRunner -- "1. listFiles()" --> SftpClient
+    BiSyncEngineRunner -- "1. listFiles()" --> LocalFileClient
+    BiSyncEngineRunner -- "2. calculateSyncActions()" --> BiSyncEngine
+    BiSyncEngine -- "3. 해시/크기 검증 & 액션 결정" --> BiSyncEngineRunner
+    BiSyncEngineRunner -- "4. 원자적 업로드/다운로드 실행" --> SftpClient
+    BiSyncEngineRunner -- "4. 원자적 업로드/다운로드 실행" --> LocalFileClient
+    BiSyncEngineRunner -- "5. DB 업데이트" --> SyncState
 ```
 
 ### 📂 주요 디렉터리 구성

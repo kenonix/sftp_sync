@@ -28,12 +28,14 @@ object BiSyncEngine {
      * The core 3-way synchronization decision engine.
      * Takes current local, current remote, and last sync states, and calculates required actions.
      */
-    fun calculateSyncActions(
+    suspend fun calculateSyncActions(
         localFiles: Map<String, SyncFile>,
         remoteFiles: Map<String, SyncFile>,
         lastState: SyncState,
         exclusions: List<String>,
-        syncCondition: SyncCondition
+        syncCondition: SyncCondition,
+        getLocalHash: suspend (String) -> String?,
+        getRemoteHash: suspend (String) -> String?
     ): List<SyncAction> {
         val actions = mutableListOf<SyncAction>()
         
@@ -43,6 +45,20 @@ object BiSyncEngine {
             .toSet()
 
         val lastStateFiles = lastState.files
+
+        suspend fun getOrComputeLocalHash(path: String, local: SyncFile, meta: SyncFileMetadata?): String? {
+            if (meta != null && meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal) {
+                return meta.hash
+            }
+            return getLocalHash(path)
+        }
+
+        suspend fun getOrComputeRemoteHash(path: String, remote: SyncFile, meta: SyncFileMetadata?): String? {
+            if (meta != null && meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote) {
+                return meta.hash
+            }
+            return getRemoteHash(path)
+        }
 
         for (path in allPaths) {
             val local = localFiles[path]
@@ -57,28 +73,45 @@ object BiSyncEngine {
             when {
                 // 1. Exists in Local, Remote, and Last State
                 local != null && remote != null && meta != null -> {
-                    val localChanged = when (syncCondition) {
-                        SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
-                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
-                        SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
-                    }
-                    val remoteChanged = when (syncCondition) {
-                        SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
-                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
-                        SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
+                    val localHash = getOrComputeLocalHash(path, local, meta)
+                    val remoteHash = getOrComputeRemoteHash(path, remote, meta)
+
+                    val localChanged: Boolean
+                    val remoteChanged: Boolean
+
+                    if (localHash != null && remoteHash != null && meta.hash != null) {
+                        localChanged = localHash != meta.hash
+                        remoteChanged = remoteHash != meta.hash
+                    } else {
+                        // Fallback to size/mtime
+                        localChanged = when (syncCondition) {
+                            SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
+                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
+                            SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
+                        }
+                        remoteChanged = when (syncCondition) {
+                            SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
+                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
+                            SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
+                        }
                     }
 
                     when {
                         localChanged && remoteChanged -> {
-                            // CONFLICT: Both modified since last sync
-                            actions.add(SyncAction(
-                                relativePath = path,
-                                actionType = SyncActionType.CONFLICT,
-                                isDirectory = false,
-                                size = local.size,
-                                localLastModified = local.lastModified,
-                                remoteLastModified = remote.lastModified
-                            ))
+                            if (localHash != null && remoteHash != null && localHash == remoteHash) {
+                                // Content is identical, no conflict, resolve to NONE
+                                actions.add(SyncAction(path, SyncActionType.NONE, false))
+                            } else {
+                                // CONFLICT: Both modified since last sync
+                                actions.add(SyncAction(
+                                    relativePath = path,
+                                    actionType = SyncActionType.CONFLICT,
+                                    isDirectory = false,
+                                    size = local.size,
+                                    localLastModified = local.lastModified,
+                                    remoteLastModified = remote.lastModified
+                                ))
+                            }
                         }
                         localChanged -> {
                             // Local modified, Remote not modified -> UPLOAD
@@ -111,11 +144,20 @@ object BiSyncEngine {
 
                 // 2. Exists in Local and Remote, but NOT in Last State (both added independently)
                 local != null && remote != null && meta == null -> {
-                    val areIdentical = when (syncCondition) {
-                        SyncCondition.TIME_DIFFERENT -> local.lastModified == remote.lastModified
-                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified == remote.lastModified && local.size == remote.size
-                        SyncCondition.SIZE_DIFFERENT -> local.size == remote.size
+                    val localHash = getLocalHash(path)
+                    val remoteHash = getRemoteHash(path)
+
+                    val areIdentical: Boolean
+                    if (localHash != null && remoteHash != null) {
+                        areIdentical = localHash == remoteHash
+                    } else {
+                        areIdentical = when (syncCondition) {
+                            SyncCondition.TIME_DIFFERENT -> local.lastModified == remote.lastModified
+                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified == remote.lastModified && local.size == remote.size
+                            SyncCondition.SIZE_DIFFERENT -> local.size == remote.size
+                        }
                     }
+
                     if (areIdentical) {
                         // Consider them in sync, just record in state
                         actions.add(SyncAction(path, SyncActionType.NONE, false))
@@ -134,11 +176,18 @@ object BiSyncEngine {
 
                 // 3. Exists in Local, NOT in Remote, exists in Last State (Remote deleted it)
                 local != null && remote == null && meta != null -> {
-                    val localChanged = when (syncCondition) {
-                        SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
-                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
-                        SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
+                    val localHash = getOrComputeLocalHash(path, local, meta)
+                    val localChanged: Boolean
+                    if (localHash != null && meta.hash != null) {
+                        localChanged = localHash != meta.hash
+                    } else {
+                        localChanged = when (syncCondition) {
+                            SyncCondition.TIME_DIFFERENT -> local.lastModified != meta.lastModifiedLocal
+                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> local.lastModified != meta.lastModifiedLocal && local.size != meta.size
+                            SyncCondition.SIZE_DIFFERENT -> local.size != meta.size
+                        }
                     }
+
                     if (localChanged) {
                         // Remote deleted, Local modified -> Conflict
                         actions.add(SyncAction(
@@ -162,11 +211,18 @@ object BiSyncEngine {
 
                 // 4. NOT in Local, exists in Remote, exists in Last State (Local deleted it)
                 local == null && remote != null && meta != null -> {
-                    val remoteChanged = when (syncCondition) {
-                        SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
-                        SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
-                        SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
+                    val remoteHash = getOrComputeRemoteHash(path, remote, meta)
+                    val remoteChanged: Boolean
+                    if (remoteHash != null && meta.hash != null) {
+                        remoteChanged = remoteHash != meta.hash
+                    } else {
+                        remoteChanged = when (syncCondition) {
+                            SyncCondition.TIME_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote
+                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> remote.lastModified != meta.lastModifiedRemote && remote.size != meta.size
+                            SyncCondition.SIZE_DIFFERENT -> remote.size != meta.size
+                        }
                     }
+
                     if (remoteChanged) {
                         // Local deleted, Remote modified -> Conflict
                         actions.add(SyncAction(
