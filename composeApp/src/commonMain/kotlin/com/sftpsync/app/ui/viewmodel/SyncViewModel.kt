@@ -31,7 +31,8 @@ data class UiState(
     val editingProfile: SyncProfile? = null,
     val androidPermissionGranted: Boolean = true,
     val directoryApprovalRequest: DirectoryApprovalRequest? = null,
-    val concurrency: Int = 2
+    val concurrency: Int = 2,
+    val parallelSyncEnabled: Boolean = true
 )
 
 enum class AppScreen {
@@ -83,6 +84,19 @@ class SyncViewModel {
         }
     }
 
+    fun updateParallelSync(enabled: Boolean) {
+        state = state.copy(parallelSyncEnabled = enabled)
+        coroutineScope.launch {
+            withContext(Dispatchers.Default) {
+                try {
+                    writeTextFile("parallel_sync.txt", enabled.toString())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     fun loadAllData() {
         coroutineScope.launch {
             val loadedProfiles = withContext(Dispatchers.Default) {
@@ -98,6 +112,14 @@ class SyncViewModel {
                     null
                 }
             } ?: getDefaultConcurrency()
+
+            val loadedParallelSync = withContext(Dispatchers.Default) {
+                try {
+                    readTextFile("parallel_sync.txt")?.trim()?.toBooleanStrictOrNull()
+                } catch (e: Exception) {
+                    null
+                }
+            } ?: true
             
             val selected = if (loadedProfiles.isNotEmpty()) {
                 state.selectedProfile ?: loadedProfiles.first()
@@ -109,7 +131,8 @@ class SyncViewModel {
                 profiles = loadedProfiles,
                 selectedProfile = selected,
                 logs = loadedLogs,
-                concurrency = loadedConcurrency
+                concurrency = loadedConcurrency,
+                parallelSyncEnabled = loadedParallelSync
             )
             
             // Start watchers for all profiles
@@ -354,7 +377,7 @@ class SyncViewModel {
                         val updatedState = runner.executeSync(
                             profile = profile,
                             lastState = lastState,
-                            concurrency = state.concurrency,
+                            concurrency = if (state.parallelSyncEnabled) state.concurrency else 1,
                             onProgress = { statusText, progress ->
                                 state = state.copy(
                                     syncStatusText = statusText,

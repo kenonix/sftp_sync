@@ -212,13 +212,23 @@ class SyncForegroundService : Service() {
                         com.sftpsync.app.utils.ProfileManager.saveGitState(updatedState)
                     } else {
                         // SFTP 양방향 동기화 모드
-                        val concurrency = try {
-                            com.sftpsync.app.utils.readTextFile("concurrency.txt")?.trim()?.toIntOrNull()
+                        val parallelEnabled = try {
+                            com.sftpsync.app.utils.readTextFile("parallel_sync.txt")?.trim()?.toBooleanStrictOrNull() ?: true
                         } catch (e: Exception) {
-                            null
-                        } ?: run {
-                            val cores = Runtime.getRuntime().availableProcessors()
-                            maxOf(2, minOf(cores / 2, 8))
+                            true
+                        }
+
+                        val concurrency = if (!parallelEnabled) {
+                            1
+                        } else {
+                            try {
+                                com.sftpsync.app.utils.readTextFile("concurrency.txt")?.trim()?.toIntOrNull()
+                            } catch (e: Exception) {
+                                null
+                            } ?: run {
+                                val cores = Runtime.getRuntime().availableProcessors()
+                                maxOf(2, minOf(cores / 2, 8))
+                            }
                         }
 
                         val sftpClient = com.sftpsync.app.utils.createSftpClient(profile)
