@@ -46,12 +46,12 @@ class JschSftpClient(
                 config["PreferredAuthentications"] = "publickey,keyboard-interactive,password"
                 setConfig(config)
                 
-                setTimeout(15000) // 15 seconds read timeout
-                connect(15000) // 15 seconds connect timeout
+                setTimeout(5000) // 5 seconds read timeout
+                connect(5000) // 5 seconds connect timeout
             }
 
             val channel = session?.openChannel("sftp")
-            channel?.connect(15000)
+            channel?.connect(5000)
             channelSftp = channel as ChannelSftp
             
             return isConnected

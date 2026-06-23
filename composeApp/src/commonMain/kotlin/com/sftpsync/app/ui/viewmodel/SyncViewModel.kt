@@ -233,7 +233,7 @@ class SyncViewModel {
      * 특정 프로필에 대해 수동 또는 자동 동기화를 시작합니다.
      * UI 스레드 상에서 구동되어 실시간 프로그레스 바 및 상태 메시지를 출력합니다.
      */
-    fun startSync(profile: SyncProfile) {
+    fun startSync(profile: SyncProfile, isManual: Boolean = true) {
         // UI가 이미 동기화 중이거나 백그라운드 서비스가 구동 중인 경우 사용자에게 피드백 제공
         synchronized(SyncLock) {
             if (state.isSyncing || SyncLock.isSyncing) {
@@ -290,18 +290,22 @@ class SyncViewModel {
                                 state = state.copy(logs = loadedLogs)
                             },
                             checkDirectoryApproval = { isLocal, path ->
-                                val deferred = CompletableDeferred<Boolean>()
-                                state = state.copy(
-                                    directoryApprovalRequest = DirectoryApprovalRequest(
-                                        isLocal = isLocal,
-                                        path = path,
-                                        onResponse = { approved ->
-                                            state = state.copy(directoryApprovalRequest = null)
-                                            deferred.complete(approved)
-                                        }
+                                if (!isManual) {
+                                    true
+                                } else {
+                                    val deferred = CompletableDeferred<Boolean>()
+                                    state = state.copy(
+                                        directoryApprovalRequest = DirectoryApprovalRequest(
+                                            isLocal = isLocal,
+                                            path = path,
+                                            onResponse = { approved ->
+                                                state = state.copy(directoryApprovalRequest = null)
+                                                deferred.complete(approved)
+                                            }
+                                        )
                                     )
-                                )
-                                deferred.await()
+                                    deferred.await()
+                                }
                             }
                         )
 
@@ -332,18 +336,22 @@ class SyncViewModel {
                                 state = state.copy(logs = loadedLogs)
                             },
                             checkDirectoryApproval = { isLocal, path ->
-                                val deferred = CompletableDeferred<Boolean>()
-                                state = state.copy(
-                                    directoryApprovalRequest = DirectoryApprovalRequest(
-                                        isLocal = isLocal,
-                                        path = path,
-                                        onResponse = { approved ->
-                                            state = state.copy(directoryApprovalRequest = null)
-                                            deferred.complete(approved)
-                                        }
+                                if (!isManual) {
+                                    true
+                                } else {
+                                    val deferred = CompletableDeferred<Boolean>()
+                                    state = state.copy(
+                                        directoryApprovalRequest = DirectoryApprovalRequest(
+                                            isLocal = isLocal,
+                                            path = path,
+                                            onResponse = { approved ->
+                                                state = state.copy(directoryApprovalRequest = null)
+                                                deferred.complete(approved)
+                                            }
+                                        )
                                     )
-                                )
-                                deferred.await()
+                                    deferred.await()
+                                }
                             }
                         )
 
@@ -444,7 +452,7 @@ class SyncViewModel {
                     if (System.currentTimeMillis() < syncCooldownUntil) continue
                     val curProfile = state.profiles.firstOrNull { it.id == profile.id }
                     if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
-                        startSync(curProfile)
+                        startSync(curProfile, isManual = false)
                     }
                 }
             }
@@ -459,7 +467,7 @@ class SyncViewModel {
             if (System.currentTimeMillis() < syncCooldownUntil) return@launch
             val profile = state.profiles.firstOrNull { it.id == profileId }
             if (profile != null && profile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
-                startSync(profile)
+                startSync(profile, isManual = false)
             }
         }
     }
@@ -495,7 +503,7 @@ class SyncViewModel {
                     if (System.currentTimeMillis() < syncCooldownUntil) continue
                     val curProfile = state.profiles.firstOrNull { it.id == profile.id }
                     if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
-                        startSync(curProfile)
+                        startSync(curProfile, isManual = false)
                     }
                 }
             }

@@ -40,6 +40,7 @@ class JGitClient(
                         .setURI(remoteUrl)
                         .setDirectory(repoDir)
                         .setBranch(branch)
+                        .setTimeout(5)
                     val clonedGit = cloneCommand.call()
                     git = clonedGit
                     repository = clonedGit.repository
@@ -94,7 +95,7 @@ class JGitClient(
     override fun push(remoteName: String): Boolean {
         return try {
             val git = git ?: return false
-            git.push().setRemote(remoteName).call()
+            git.push().setRemote(remoteName).setTimeout(5).call()
             true
         } catch (e: GitAPIException) {
             e.printStackTrace()
@@ -105,7 +106,7 @@ class JGitClient(
     override fun pull(remoteName: String): Boolean {
         return try {
             val git = git ?: return false
-            git.pull().setRemote(remoteName).call()
+            git.pull().setRemote(remoteName).setTimeout(5).call()
             true
         } catch (e: GitAPIException) {
             e.printStackTrace()
