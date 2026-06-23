@@ -668,12 +668,7 @@ fun StatusOverviewCard(profile: SyncProfile, state: UiState) {
                             .background(Slate700)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        val condLabel = when (profile.syncCondition) {
-                            SyncCondition.TIME_DIFFERENT -> "시간 다름"
-                            SyncCondition.TIME_AND_SIZE_DIFFERENT -> "시간 & 용량 다름"
-                            SyncCondition.SIZE_DIFFERENT -> "용량 다름"
-                        }
-                        Text("동기화 조건: $condLabel", color = TextLight, fontSize = 11.sp)
+                        Text("동기화 조건: 해시 다름 (SHA-256)", color = TextLight, fontSize = 11.sp)
                     }
                 }
             }
