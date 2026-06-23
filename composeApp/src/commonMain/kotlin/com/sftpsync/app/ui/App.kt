@@ -371,6 +371,17 @@ fun DashboardScreen(
     val profile = state.selectedProfile
     val scope = rememberCoroutineScope()
 
+    // Pulse animation for Auto Sync status, defined at the top level to avoid recreation during recomposition
+    val infiniteTransition = rememberInfiniteTransition()
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
     if (profile == null) {
         // Empty placeholder state
         Column(
@@ -431,30 +442,20 @@ fun DashboardScreen(
                     
                     if (profile.autoSyncEnabled) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        
-                        val infiniteTransition = rememberInfiniteTransition()
-                        val alpha by infiniteTransition.animateFloat(
-                            initialValue = 0.7f,
-                            targetValue = 1.0f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(2500, easing = LinearEasing),
-                                repeatMode = RepeatMode.Reverse
-                            )
-                        )
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(SuccessGreen.copy(alpha = 0.12f))
-                                .border(1.5.dp, SuccessGreen.copy(alpha = alpha), RoundedCornerShape(12.dp))
+                                .border(1.5.dp, SuccessGreen.copy(alpha = pulseAlpha), RoundedCornerShape(12.dp))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(SuccessGreen.copy(alpha = alpha))
+                                    .background(SuccessGreen.copy(alpha = pulseAlpha))
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -735,7 +736,9 @@ fun SyncActionButtonCard(
                             tint = if (state.isSyncing) CyanGlow else TextWhite,
                             modifier = Modifier
                                 .size(56.dp)
-                                .rotate(if (state.isSyncing) angle else 0f)
+                                .graphicsLayer {
+                                    rotationZ = if (state.isSyncing) angle else 0f
+                                }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
