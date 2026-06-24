@@ -4,6 +4,7 @@ import com.sftpsync.app.models.SyncLog
 import com.sftpsync.app.models.SyncProfile
 import com.sftpsync.app.models.SyncState
 import com.sftpsync.app.models.GitSyncState
+import com.sftpsync.app.models.SyncMode
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -127,5 +128,56 @@ object ProfileManager {
     
     fun clearLogs() {
         saveLogs(emptyList())
+    }
+
+    fun hasLocalChanges(profile: SyncProfile): Boolean {
+        return try {
+            val localClient = createLocalFileClient()
+            if (!localClient.exists(profile.localPath)) return false
+
+            val localFiles = localClient.listFiles(profile.localPath).associateBy { it.relativePath }
+
+            // Filter out exclusions
+            val filteredLocalFiles = localFiles.filterKeys { path ->
+                !com.sftpsync.app.sync.BiSyncEngine.isExcluded(path, profile.exclusions)
+            }
+
+            if (profile.syncMode == SyncMode.GIT) {
+                val lastState = loadGitState(profile.id)
+                val trackedFiles = lastState.trackedFiles
+
+                val filteredLocalFilesNoDir = filteredLocalFiles.filterValues { !it.isDirectory }
+
+                // 1. Check if size of keys is different
+                if (filteredLocalFilesNoDir.size != trackedFiles.size) return true
+
+                // 2. Check each file
+                for ((path, localFile) in filteredLocalFilesNoDir) {
+                    val lastModified = trackedFiles[path] ?: return true
+                    if (localFile.lastModified != lastModified) return true
+                }
+            } else {
+                val lastState = loadState(profile.id)
+                val stateFiles = lastState.files
+
+                val filteredStateFiles = stateFiles.filterValues { !it.isDirectory }
+                val filteredLocalFilesNoDir = filteredLocalFiles.filterValues { !it.isDirectory }
+
+                // 1. Check if size of keys is different
+                if (filteredLocalFilesNoDir.size != filteredStateFiles.size) return true
+
+                // 2. Check each file
+                for ((path, localFile) in filteredLocalFilesNoDir) {
+                    val meta = filteredStateFiles[path] ?: return true
+                    if (localFile.size != meta.size || localFile.lastModified != meta.lastModifiedLocal) {
+                        return true
+                    }
+                }
+            }
+            false
+        } catch (e: Exception) {
+            e.printStackTrace()
+            true // Fallback to true on error to ensure sync runs
+        }
     }
 }

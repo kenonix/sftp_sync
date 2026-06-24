@@ -180,12 +180,32 @@ class BiSyncEngineRunner(
                     continue
                 }
 
-                if (local != null && remote != null && meta != null) {
-                    if (!(meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal)) {
-                        pathsNeedingLocalHash.add(path)
+                when {
+                    // Case 1: Exists in Local, Remote, and Last State
+                    local != null && remote != null && meta != null -> {
+                        if (!(meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal)) {
+                            pathsNeedingLocalHash.add(path)
+                        }
+                        if (!(meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote)) {
+                            pathsNeedingRemoteHash.add(path)
+                        }
                     }
-                    if (!(meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote)) {
+                    // Case 2: Exists in Local and Remote, but NOT in Last State (e.g., First Sync)
+                    local != null && remote != null && meta == null -> {
+                        pathsNeedingLocalHash.add(path)
                         pathsNeedingRemoteHash.add(path)
+                    }
+                    // Case 3: Exists in Local, NOT in Remote, exists in Last State (Remote deleted it)
+                    local != null && remote == null && meta != null -> {
+                        if (!(meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal)) {
+                            pathsNeedingLocalHash.add(path)
+                        }
+                    }
+                    // Case 4: NOT in Local, exists in Remote, exists in Last State (Local deleted it)
+                    local == null && remote != null && meta != null -> {
+                        if (!(meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote)) {
+                            pathsNeedingRemoteHash.add(path)
+                        }
                     }
                 }
             }

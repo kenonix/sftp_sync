@@ -73,8 +73,8 @@ android {
         applicationId = "com.sftpsync.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.0.5"
+        versionCode = 6
+        versionName = "1.0.6"
     }
     
     compileOptions {
@@ -109,7 +109,7 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Rpm
             )
             packageName = "SftpSyncApp"
-            packageVersion = "1.0.5"
+            packageVersion = "1.0.6"
             windows {
                 iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
             }

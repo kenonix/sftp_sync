@@ -11,6 +11,7 @@ import com.sftpsync.app.sync.GitSyncEngineRunner
 import com.sftpsync.app.sftp.JGitClient
 import com.sftpsync.app.utils.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 
 data class DirectoryApprovalRequest(
     val isLocal: Boolean,
@@ -47,19 +48,23 @@ class SyncViewModel {
 
     // Active file watchers for profiles with auto-sync enabled
     private val activeWatchers = HashMap<String, FileWatcherJob>()
+    // Cached watcher paths to avoid redundant watcher recreation
+    private val activeWatcherPaths = HashMap<String, String>()
     // Debounce jobs to delay sync on changes (3 seconds)
     private val debounceJobs = HashMap<String, Job>()
     // Active remote polling jobs for profiles with auto-sync enabled (30 seconds polling)
     private val remotePollingJobs = HashMap<String, Job>()
-    // 동기화 완료 후 자동 재트리거 방지용 쿨다운 타임스탬프 (밀리초)
-    @Volatile
-    private var syncCooldownUntil: Long = 0L
 
     var state by mutableStateOf(UiState())
         private set
 
     init {
         loadAllData()
+        coroutineScope.launch {
+            SyncLock.isSyncingFlow.collect { syncing ->
+                state = state.copy(isSyncing = syncing)
+            }
+        }
     }
 
     private fun getDefaultConcurrency(): Int {
@@ -435,8 +440,6 @@ class SyncViewModel {
                     synchronized(SyncLock) {
                         SyncLock.isSyncing = false
                     }
-                    // 버그 #5 수정: 동기화 완료 후 5초 쿨다운 설정 후 감시자 재활성화
-                    syncCooldownUntil = System.currentTimeMillis() + 5000L
                     resumeAutoSyncWatchers()
                 }
             }
@@ -473,42 +476,65 @@ class SyncViewModel {
 
     // 프로필 설정에 맞춰 파일 감시자(FileWatcher)와 원격 서버 감지용 폴링 스케줄러를 개설하거나 파기합니다.
     fun updateAutoSyncWatcher(profile: SyncProfile) {
-        // 기존 감시 스케줄 파기
-        activeWatchers[profile.id]?.cancel()
-        activeWatchers.remove(profile.id)
-        debounceJobs[profile.id]?.cancel()
-        debounceJobs.remove(profile.id)
-        
-        // 기존 원격 검사 타이머 파기
-        remotePollingJobs[profile.id]?.cancel()
-        remotePollingJobs.remove(profile.id)
-
         // Android 환경에서는 포그라운드 서비스(SyncForegroundService)가 파일 감시와 
         // 폴링을 독립적으로 관리하므로, UI 뷰모델 레벨의 감시 등록을 건너뜁니다.
         if (getPlatformName() == "Android") {
             return
         }
 
-        if (profile.autoSyncEnabled) {
-            // 1. Local File Watcher Setup
-            val watcher = startFileWatcher(profile.id, profile.localPath) {
-                // File changed callback
-                triggerAutoSync(profile.id)
-            }
-            if (watcher != null) {
-                activeWatchers[profile.id] = watcher
-            }
+        if (!profile.autoSyncEnabled) {
+            // 기존 감시 스케줄 파기
+            activeWatchers[profile.id]?.cancel()
+            activeWatchers.remove(profile.id)
+            activeWatcherPaths.remove(profile.id)
+            debounceJobs[profile.id]?.cancel()
+            debounceJobs.remove(profile.id)
+            
+            // 기존 원격 검사 타이머 파기
+            remotePollingJobs[profile.id]?.cancel()
+            remotePollingJobs.remove(profile.id)
+            return
+        }
 
-            // 2. Remote Server Polling Job Setup (30-second interval)
-            remotePollingJobs[profile.id] = coroutineScope.launch {
-                while (isActive) {
-                    delay(30000) // Wait for 30 seconds
-                    // 버그 #2/#5 수정: 쿨다운 및 SyncLock도 확인
-                    if (System.currentTimeMillis() < syncCooldownUntil) continue
-                    val curProfile = state.profiles.firstOrNull { it.id == profile.id }
-                    if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
-                        startSync(curProfile, isManual = false)
-                    }
+        // 경로와 활성화 상태가 동일한 기존 감시자가 있다면 재시작하지 않고 스킵
+        val currentWatchedPath = activeWatcherPaths[profile.id]
+        if (currentWatchedPath == profile.localPath) {
+            if (remotePollingJobs[profile.id] == null) {
+                setupRemotePolling(profile)
+            }
+            return
+        }
+
+        // 설정 변경 혹은 신규 프로필: 기존 감시 정리
+        activeWatchers[profile.id]?.cancel()
+        activeWatchers.remove(profile.id)
+        activeWatcherPaths.remove(profile.id)
+        debounceJobs[profile.id]?.cancel()
+        debounceJobs.remove(profile.id)
+        remotePollingJobs[profile.id]?.cancel()
+        remotePollingJobs.remove(profile.id)
+
+        // 1. Local File Watcher Setup
+        val watcher = startFileWatcher(profile.id, profile.localPath) {
+            // File changed callback
+            triggerAutoSync(profile.id)
+        }
+        if (watcher != null) {
+            activeWatchers[profile.id] = watcher
+            activeWatcherPaths[profile.id] = profile.localPath
+        }
+
+        // 2. Remote Server Polling Job Setup (30-second interval)
+        setupRemotePolling(profile)
+    }
+
+    private fun setupRemotePolling(profile: SyncProfile) {
+        remotePollingJobs[profile.id] = coroutineScope.launch {
+            while (isActive) {
+                delay(30000) // Wait for 30 seconds
+                val curProfile = state.profiles.firstOrNull { it.id == profile.id }
+                if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
+                    startSync(curProfile, isManual = false)
                 }
             }
         }
@@ -518,11 +544,14 @@ class SyncViewModel {
         debounceJobs[profileId]?.cancel()
         debounceJobs[profileId] = coroutineScope.launch {
             delay(3000) // 3-second debouncing
-            // 버그 #5 수정: 쿨다운 기간 내에는 자동 동기화 트리거 무시
-            if (System.currentTimeMillis() < syncCooldownUntil) return@launch
             val profile = state.profiles.firstOrNull { it.id == profileId }
             if (profile != null && profile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
-                startSync(profile, isManual = false)
+                val hasChanges = withContext(Dispatchers.Default) {
+                    ProfileManager.hasLocalChanges(profile)
+                }
+                if (hasChanges) {
+                    startSync(profile, isManual = false)
+                }
             }
         }
     }
@@ -548,19 +577,8 @@ class SyncViewModel {
         if (getPlatformName() == "Android") return
         val profiles = state.profiles.filter { it.autoSyncEnabled }
         for (profile in profiles) {
-            // 원격 폴링 재시작 (파일 감시자는 loadAllData()에서 재등록됨)
-            remotePollingJobs[profile.id] = coroutineScope.launch {
-                // 쿨다운 대기
-                val remaining = syncCooldownUntil - System.currentTimeMillis()
-                if (remaining > 0) delay(remaining)
-                while (isActive) {
-                    delay(30000)
-                    if (System.currentTimeMillis() < syncCooldownUntil) continue
-                    val curProfile = state.profiles.firstOrNull { it.id == profile.id }
-                    if (curProfile != null && curProfile.autoSyncEnabled && !state.isSyncing && !SyncLock.isSyncing) {
-                        startSync(curProfile, isManual = false)
-                    }
-                }
+            if (remotePollingJobs[profile.id] == null) {
+                setupRemotePolling(profile)
             }
         }
     }

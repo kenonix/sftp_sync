@@ -38,10 +38,6 @@ class SyncForegroundService : Service() {
     // 로컬 파일 변경 발생 시 무분별한 연속 트리거를 제어하기 위한 디바운스(Debounce) 코루틴 Job 맵입니다.
     private val debounceJobs = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
-    // 동기화 완료 후 자동 재트리거 방지용 쿨다운 타임스탬프 (밀리초)
-    @Volatile
-    private var syncCooldownUntil: Long = 0L
-
     override fun onCreate() {
         super.onCreate()
         // 오레오(API 26) 이상에서 필수가 된 포그라운드 서비스용 알림 채널 개설
@@ -132,9 +128,6 @@ class SyncForegroundService : Service() {
                 while (isActive) {
                     delay(30000) // 30초 주기 대기
                     
-                    // 버그 #2/#5 수정: 쿨다운 기간 내에는 자동 동기화 스킵
-                    if (System.currentTimeMillis() < syncCooldownUntil) continue
-                    
                     // 매 주기마다 최신 프로필 설정값 로드하여 설정 변경 여부 반영
                     val currentProfiles = com.sftpsync.app.utils.ProfileManager.loadProfiles()
                     val currentProfile = currentProfiles.firstOrNull { it.id == profile.id }
@@ -157,13 +150,13 @@ class SyncForegroundService : Service() {
         debounceJobs[profile.id] = serviceScope.launch {
             delay(3000) // 3초 안정기 대기 (연속 파일 변경 병합용)
             
-            // 버그 #5 수정: 쿨다운 기간 내에는 자동 동기화 트리거 무시
-            if (System.currentTimeMillis() < syncCooldownUntil) return@launch
-            
             val currentProfiles = com.sftpsync.app.utils.ProfileManager.loadProfiles()
             val currentProfile = currentProfiles.firstOrNull { it.id == profile.id }
             if (currentProfile != null && currentProfile.autoSyncEnabled) {
-                startBackgroundSync(currentProfile)
+                val hasChanges = com.sftpsync.app.utils.ProfileManager.hasLocalChanges(currentProfile)
+                if (hasChanges) {
+                    startBackgroundSync(currentProfile)
+                }
             }
         }
     }
@@ -251,8 +244,6 @@ class SyncForegroundService : Service() {
                     synchronized(com.sftpsync.app.utils.SyncLock) {
                         com.sftpsync.app.utils.SyncLock.isSyncing = false
                     }
-                    // 버그 #5 수정: 동기화 완료 후 5초 쿨다운 설정
-                    syncCooldownUntil = System.currentTimeMillis() + 5000L
                     updateNotification("실시간 양방향 동기화 백그라운드 가동 중")
                 }
             }
