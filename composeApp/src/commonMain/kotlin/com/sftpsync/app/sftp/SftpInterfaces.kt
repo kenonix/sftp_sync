@@ -14,6 +14,7 @@ interface SftpClient {
     fun getFileLastModified(remoteFilePath: String): Long
     fun exists(remotePath: String): Boolean
     fun getFileHash(remoteFilePath: String): String?
+    fun getLastError(): String? = null
 }
 
 interface LocalFileClient {

@@ -329,6 +329,9 @@ class AndroidRecursiveFileObserver(
                         // API 26-28 하위 호환성을 위해 문자열 경로 생성자를 활용 (DEPRECATION 경고 무시)
                         val observer = @Suppress("DEPRECATION") object : android.os.FileObserver(file.absolutePath, mask) {
                             override fun onEvent(event: Int, path: String?) {
+                                if (SyncLock.isSyncing) {
+                                    return
+                                }
                                 if (path != null) {
                                     // 내부 동기화 상태 파일이나 시스템이 생성하는 불필요한 메타데이터 파일 무시
                                     if (path == ".sftp-sync-state.json" || path.startsWith(".sftp-sync") || path == ".git" || path == "Thumbs.db" || path == ".DS_Store") {

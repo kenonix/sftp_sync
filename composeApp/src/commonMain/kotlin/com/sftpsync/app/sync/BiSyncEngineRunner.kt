@@ -213,9 +213,12 @@ class BiSyncEngineRunner(
             val localHashes = mutableMapOf<String, String>()
             val remoteHashes = mutableMapOf<String, String>()
             val hashMutex = Mutex()
+            val hashProgressMutex = Mutex()
 
             if (pathsNeedingLocalHash.isNotEmpty()) {
-                onProgress("로컬 파일 해시 분석 중 (${pathsNeedingLocalHash.size}개)...", 0.16f)
+                val total = pathsNeedingLocalHash.size
+                var completed = 0
+                onProgress("로컬 파일 해시 분석 중 (0/$total)...", 0.16f)
                 val localChannel = Channel<String>(Channel.UNLIMITED)
                 pathsNeedingLocalHash.forEach { localChannel.trySend(it) }
                 localChannel.close()
@@ -230,6 +233,11 @@ class BiSyncEngineRunner(
                                         localHashes[path] = hash
                                     }
                                 }
+                                hashProgressMutex.withLock {
+                                    completed++
+                                    val pct = completed.toFloat() / total.toFloat()
+                                    onProgress("로컬 파일 해시 분석 중 ($completed/$total): $path", 0.15f + pct * 0.03f)
+                                }
                             }
                         }
                     }
@@ -237,7 +245,9 @@ class BiSyncEngineRunner(
             }
 
             if (pathsNeedingRemoteHash.isNotEmpty()) {
-                onProgress("원격 파일 해시 분석 중 (${pathsNeedingRemoteHash.size}개)...", 0.18f)
+                val total = pathsNeedingRemoteHash.size
+                var completed = 0
+                onProgress("원격 파일 해시 분석 중 (0/$total)...", 0.18f)
                 val remoteChannel = Channel<String>(Channel.UNLIMITED)
                 pathsNeedingRemoteHash.forEach { remoteChannel.trySend(it) }
                 remoteChannel.close()
@@ -251,6 +261,11 @@ class BiSyncEngineRunner(
                                     hashMutex.withLock {
                                         remoteHashes[path] = hash
                                     }
+                                }
+                                hashProgressMutex.withLock {
+                                    completed++
+                                    val pct = completed.toFloat() / total.toFloat()
+                                    onProgress("원격 파일 해시 분석 중 ($completed/$total): $path", 0.18f + pct * 0.02f)
                                 }
                             }
                         }
@@ -348,7 +363,7 @@ class BiSyncEngineRunner(
                                                 message = "업로드 완료 (크기: ${formatSize(action.size)})"
                                             ))
                                         } else {
-                                            throw Exception("SFTP 업로드 실패")
+                                            throw Exception("SFTP 업로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
                                         }
                                     }
 
@@ -370,13 +385,14 @@ class BiSyncEngineRunner(
                                         if (ok) {
                                             val remoteModified = action.remoteLastModified
                                             localClient.setLastModified(localFile, remoteModified)
+                                            val actualLocalModified = java.io.File(localFile).lastModified()
                                             val localHash = localClient.getFileHash(localFile)
                                             
                                             progressMutex.withLock {
                                                 newFilesMetadata[action.relativePath] = SyncFileMetadata(
                                                     relativePath = action.relativePath,
                                                     size = action.size,
-                                                    lastModifiedLocal = remoteModified,
+                                                    lastModifiedLocal = actualLocalModified,
                                                     lastModifiedRemote = remoteModified,
                                                     isDirectory = false,
                                                     hash = localHash
@@ -393,7 +409,7 @@ class BiSyncEngineRunner(
                                                 message = "다운로드 완료 (크기: ${formatSize(action.size)})"
                                             ))
                                         } else {
-                                            throw Exception("SFTP 다운로드 실패")
+                                            throw Exception("SFTP 다운로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
                                         }
                                     }
 
@@ -485,6 +501,33 @@ class BiSyncEngineRunner(
                 }
             }
 
+            // Ensure all files that are currently in sync (exist locally and remotely, and not deleted)
+            // are represented in the state metadata.
+            for ((path, localFile) in localFiles) {
+                if (localFile.isDirectory) continue
+                if (BiSyncEngine.isExcluded(path, profile.exclusions)) continue
+                
+                if (!newFilesMetadata.containsKey(path)) {
+                    val wasDeleted = pendingActions.any { 
+                        it.relativePath == path && (it.actionType == SyncActionType.DELETE_LOCAL || it.actionType == SyncActionType.DELETE_REMOTE) 
+                    }
+                    if (!wasDeleted) {
+                        val remoteFile = remoteFiles[path]
+                        if (remoteFile != null) {
+                            val localHash = localHashes[path] ?: localClient.getFileHash("${profile.localPath}/$path")
+                            newFilesMetadata[path] = SyncFileMetadata(
+                                relativePath = path,
+                                size = localFile.size,
+                                lastModifiedLocal = localFile.lastModified,
+                                lastModifiedRemote = remoteFile.lastModified,
+                                isDirectory = false,
+                                hash = localHash
+                            )
+                        }
+                    }
+                }
+            }
+
             onProgress("동기화 완료", 1.0f)
             return@withContext SyncState(
                 profileId = profile.id,
@@ -544,18 +587,19 @@ class BiSyncEngineRunner(
                     message = "충돌 해결: 로컬 덮어쓰기 완료"
                 ))
             } else {
-                throw Exception("충돌 해결 중 업로드 실패")
+                throw Exception("충돌 해결 중 업로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
             }
         } else if (resolved.actionType == SyncActionType.DOWNLOAD) {
             val ok = client.downloadFile(remoteFile, localFile) {}
             if (ok) {
                 val remoteModified = resolved.remoteLastModified
                 localClient.setLastModified(localFile, remoteModified)
+                val actualLocalModified = java.io.File(localFile).lastModified()
                 val localHash = localClient.getFileHash(localFile)
                 newMetadata[resolved.relativePath] = SyncFileMetadata(
                     relativePath = resolved.relativePath,
                     size = resolved.size,
-                    lastModifiedLocal = remoteModified,
+                    lastModifiedLocal = actualLocalModified,
                     lastModifiedRemote = remoteModified,
                     isDirectory = false,
                     hash = localHash
@@ -570,7 +614,7 @@ class BiSyncEngineRunner(
                     message = "충돌 해결: 원격 덮어쓰기 완료"
                 ))
             } else {
-                throw Exception("충돌 해결 중 다운로드 실패")
+                throw Exception("충돌 해결 중 다운로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
             }
         }
     }
@@ -621,7 +665,7 @@ class BiSyncEngineRunner(
         // 1. Download Remote Original to Local Conflict file
         val downloadOk = client.downloadFile(remoteFileOriginal, localFileConflict) {}
         if (!downloadOk) {
-            throw Exception("원격 충돌 파일 다운로드 실패")
+            throw Exception("원격 충돌 파일 다운로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
         }
 
         // 2. Set remote mTime to local downloaded conflict file
@@ -631,13 +675,13 @@ class BiSyncEngineRunner(
         // 3. Upload Local Original to Remote Original (Client wins/overwrites remote original)
         val uploadOriginalOk = client.uploadFile(localFileOriginal, remoteFileOriginal) {}
         if (!uploadOriginalOk) {
-            throw Exception("원격 원본 파일 업로드 실패")
+            throw Exception("원격 원본 파일 업로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
         }
 
         // 4. Upload Local Conflict file to Remote Conflict file
         val uploadConflictOk = client.uploadFile(localFileConflict, remoteFileConflict) {}
         if (!uploadConflictOk) {
-            throw Exception("이름이 변경된 충돌 파일 업로드 실패")
+            throw Exception("이름이 변경된 충돌 파일 업로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
         }
 
         // 5. Update metadata state: update original (local original) and add the conflict file
@@ -660,7 +704,7 @@ class BiSyncEngineRunner(
         newMetadata[finalRemoteRenamed] = SyncFileMetadata(
             relativePath = finalRemoteRenamed,
             size = localConflictFile.length(),
-            lastModifiedLocal = remoteOriginal.lastModified,
+            lastModifiedLocal = localConflictFile.lastModified(),
             lastModifiedRemote = remoteOriginal.lastModified,
             isDirectory = false,
             hash = localConflictHash

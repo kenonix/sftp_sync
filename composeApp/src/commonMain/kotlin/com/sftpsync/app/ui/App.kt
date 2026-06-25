@@ -525,7 +525,7 @@ fun DashboardScreen(
                 // Left 55% for Connection Status Cards
                 Column(modifier = Modifier.weight(0.55f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     StatusOverviewCard(profile, state)
-                    LogTimelineCard(state, profile)
+                    LogTimelineCard(state, profile, onShowMore = { viewModel.navigateTo(AppScreen.LOGS) })
                 }
                 
                 // Right 45% for the Big Sync Button
@@ -540,7 +540,7 @@ fun DashboardScreen(
             ) {
                 item { SyncActionButtonCard(state, viewModel, profile) }
                 item { StatusOverviewCard(profile, state) }
-                item { LogTimelineCard(state, profile) }
+                item { LogTimelineCard(state, profile, onShowMore = { viewModel.navigateTo(AppScreen.LOGS) }) }
             }
         }
     }
@@ -791,7 +791,7 @@ fun SyncActionButtonCard(
 }
 
 @Composable
-fun LogTimelineCard(state: UiState, profile: SyncProfile) {
+fun LogTimelineCard(state: UiState, profile: SyncProfile, onShowMore: () -> Unit) {
     val filteredLogs = state.logs.filter { it.profileId == profile.id }.take(5)
 
     Card(
@@ -819,8 +819,7 @@ fun LogTimelineCard(state: UiState, profile: SyncProfile) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.clickable {
-                        val logPath = getAppConfigDir() + "/logs.json"
-                        openFileInSystemViewer(logPath)
+                        onShowMore()
                     }
                 )
             }

@@ -20,11 +20,15 @@ class JschSftpClient(
     private var jsch = JSch()
     private var session: Session? = null
     private var channelSftp: ChannelSftp? = null
+    private var lastErrorMsg: String? = null
+
+    override fun getLastError(): String? = lastErrorMsg
 
     override val isConnected: Boolean
         get() = session?.isConnected == true && channelSftp?.isConnected == true
 
     override fun connect(): Boolean {
+        lastErrorMsg = null
         try {
             if (isConnected) return true
             
@@ -58,6 +62,7 @@ class JschSftpClient(
             return isConnected
         } catch (e: Exception) {
             e.printStackTrace()
+            lastErrorMsg = e.message ?: e.toString()
             disconnect()
             return false
         }
@@ -127,6 +132,7 @@ class JschSftpClient(
         localFilePath: String,
         onProgress: (Long) -> Unit
     ): Boolean {
+        lastErrorMsg = null
         if (!isConnected && !connect()) return false
         val sftp = channelSftp ?: return false
 
@@ -161,12 +167,14 @@ class JschSftpClient(
                 if (localTempFile.exists()) {
                     localTempFile.delete()
                 }
+                lastErrorMsg = "임시 파일 이름을 변경하지 못했습니다."
                 false
             } else {
                 true
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            lastErrorMsg = e.message ?: e.toString()
             if (localTempFile.exists()) {
                 localTempFile.delete()
             }
@@ -179,6 +187,7 @@ class JschSftpClient(
         remoteFilePath: String,
         onProgress: (Long) -> Unit
     ): Boolean {
+        lastErrorMsg = null
         if (!isConnected && !connect()) return false
         val sftp = channelSftp ?: return false
 
@@ -206,6 +215,7 @@ class JschSftpClient(
             true
         } catch (e: Exception) {
             e.printStackTrace()
+            lastErrorMsg = e.message ?: e.toString()
             try {
                 if (exists(tempRemotePath)) {
                     sftp.rm(tempRemotePath)
@@ -233,6 +243,7 @@ class JschSftpClient(
     }
 
     override fun deleteFile(remoteFilePath: String): Boolean {
+        lastErrorMsg = null
         if (!isConnected && !connect()) return false
         val sftp = channelSftp ?: return false
 
@@ -246,11 +257,13 @@ class JschSftpClient(
             true
         } catch (e: Exception) {
             e.printStackTrace()
+            lastErrorMsg = e.message ?: e.toString()
             false
         }
     }
 
     override fun createDirectory(remotePath: String): Boolean {
+        lastErrorMsg = null
         if (!isConnected && !connect()) return false
         val sftp = channelSftp ?: return false
 
@@ -259,6 +272,7 @@ class JschSftpClient(
             true
         } catch (e: Exception) {
             e.printStackTrace()
+            lastErrorMsg = e.message ?: e.toString()
             false
         }
     }
@@ -288,7 +302,20 @@ class JschSftpClient(
     override fun getFileHash(remoteFilePath: String): String? {
         val hash = getFileHashViaExec(remoteFilePath)
         if (hash != null) return hash
-        return getFileHashViaStreaming(remoteFilePath)
+        
+        // Streaming fallback can be extremely slow on large files.
+        // Limit to <= 2MB.
+        return try {
+            val sftp = channelSftp ?: return null
+            val attrs = sftp.stat(remoteFilePath)
+            if (attrs.size <= 2 * 1024 * 1024) {
+                getFileHashViaStreaming(remoteFilePath)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun getFileHashViaExec(remoteFilePath: String): String? {
