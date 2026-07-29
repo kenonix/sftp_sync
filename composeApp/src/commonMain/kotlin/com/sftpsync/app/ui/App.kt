@@ -2203,7 +2203,7 @@ fun ConflictResolutionOverlay(
                     }
                 }
 
-                Divider(color = Slate700)
+                HorizontalDivider(color = Slate700)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -2244,7 +2244,7 @@ fun ConflictResolutionOverlay(
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))
-                    VerticalDivider(color = Slate700)
+                    VerticalDivider(modifier = Modifier.fillMaxHeight(), color = Slate700)
                     Spacer(modifier = Modifier.width(16.dp))
 
                     // Right detail comparison view
@@ -2336,8 +2336,8 @@ fun ConflictResolutionOverlay(
 fun formatSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB")
-    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-    return "${(bytes / Math.pow(1024.0, digitGroups.toDouble()) * 100).toInt() / 100.0} ${units[digitGroups]}"
+    val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
+    return "${(bytes / kotlin.math.pow(1024.0, digitGroups.toDouble()) * 100).toInt() / 100.0} ${units[digitGroups]}"
 }
 
 fun formatTimestamp(timestamp: Long): String {
