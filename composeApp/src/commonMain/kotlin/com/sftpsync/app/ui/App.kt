@@ -177,6 +177,14 @@ fun App(viewModel: SyncViewModel = remember { SyncViewModel() }) {
                         request = request
                     )
                 }
+
+                // Conflict Resolution Modal overlay
+                if (state.showConflictModal) {
+                    ConflictResolutionOverlay(
+                        state = state,
+                        viewModel = viewModel
+                    )
+                }
             }
         }
     }
@@ -514,7 +522,13 @@ fun DashboardScreen(
                         )
                     }
                 }
-            }
+        }
+
+        if (state.conflictFiles.isNotEmpty()) {
+            ConflictAlertBanner(
+                conflictCount = state.conflictFiles.size,
+                onOpenModal = { viewModel.openConflictModal() }
+            )
         }
 
         // Split Layout for Large screen Dashboard, Vertical for Android
@@ -2092,4 +2106,242 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+@Composable
+fun ConflictAlertBanner(
+    conflictCount: Int,
+    onOpenModal: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = WarningYellow.copy(alpha = 0.15f)),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, WarningYellow.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.Warning,
+                contentDescription = "충돌 알림",
+                tint = WarningYellow,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "감지된 충돌 복사본 파일 ${conflictCount}개",
+                    fontWeight = FontWeight.Bold,
+                    color = TextWhite,
+                    fontSize = 15.sp
+                )
+                Text(
+                    "동기화 중 안전하게 보존된 복사본이 존재합니다. 원클릭으로 비교하고 원본으로 채택하거나 정리할 수 있습니다.",
+                    color = TextLight,
+                    fontSize = 12.sp
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Button(
+                onClick = onOpenModal,
+                colors = ButtonDefaults.buttonColors(containerColor = WarningYellow),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("충돌 비교 및 해결", color = Slate900, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun ConflictResolutionOverlay(
+    state: UiState,
+    viewModel: SyncViewModel
+) {
+    val selectedItem = state.selectedConflictItem ?: state.conflictFiles.firstOrNull()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.75f))
+            .clickable(enabled = false) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .width(820.dp)
+                .fillMaxHeight(0.85f)
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Slate900),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Slate700)
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                // Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Build,
+                        contentDescription = null,
+                        tint = CyanGlow,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        "충돌 파일 비교 및 정리",
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite,
+                        fontSize = 18.sp
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = { viewModel.closeConflictModal() }) {
+                        Icon(Icons.Filled.Close, contentDescription = "닫기", tint = TextLight)
+                    }
+                }
+
+                Divider(color = Slate700)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    // Left list of conflict files
+                    LazyColumn(
+                        modifier = Modifier.width(260.dp).fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.conflictFiles) { item ->
+                            val isSelected = selectedItem?.relativePath == item.relativePath
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) Slate800 else Slate900)
+                                    .border(1.dp, if (isSelected) CyanGlow else Slate700, RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.selectConflictItem(item) }
+                                    .padding(12.dp)
+                            ) {
+                                Column {
+                                    Text(
+                                        item.relativePath,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) TextWhite else TextLight,
+                                        fontSize = 13.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "크기: ${formatSize(item.localSize)}",
+                                        color = TextMuted,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+                    VerticalDivider(color = Slate700)
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Right detail comparison view
+                    if (selectedItem != null) {
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            Text(
+                                "파일 비교 상세",
+                                fontWeight = FontWeight.Bold,
+                                color = TextWhite,
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Comparison Cards
+                            Row(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Conflict Copy File Card
+                                Card(
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, WarningYellow.copy(alpha = 0.6f))
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("⚠️ 충돌 복사본 파일", color = WarningYellow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(selectedItem.relativePath, color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text("용량: ${formatSize(selectedItem.localSize)}", color = TextWhite, fontSize = 13.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("수정 시각: ${formatTimestamp(selectedItem.localLastModified)}", color = TextMuted, fontSize = 11.sp)
+                                    }
+                                }
+
+                                // Original File Card (if exists)
+                                Card(
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, BlueGlow.copy(alpha = 0.6f))
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text("📄 기존 원본 파일", color = BlueGlow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(selectedItem.originalPath.ifEmpty { "원본 미파악" }, color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text("용량: ${formatSize(selectedItem.remoteSize)}", color = TextWhite, fontSize = 13.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("수정 시각: ${formatTimestamp(selectedItem.remoteLastModified)}", color = TextMuted, fontSize = 11.sp)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Action buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = { viewModel.resolveConflictKeepLocal(selectedItem) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CyanGlow),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("이 복사본으로 원본 대체", color = Slate900, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+
+                                Button(
+                                    onClick = { viewModel.resolveConflictDelete(selectedItem) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("충돌 복사본 삭제", color = TextLight, fontSize = 13.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun formatSize(bytes: Long): String {
+    if (bytes <= 0) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB")
+    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
+    return "${(bytes / Math.pow(1024.0, digitGroups.toDouble()) * 100).toInt() / 100.0} ${units[digitGroups]}"
+}
+
+fun formatTimestamp(timestamp: Long): String {
+    if (timestamp <= 0L) return "-"
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    return sdf.format(java.util.Date(timestamp))
 }

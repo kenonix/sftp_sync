@@ -49,9 +49,21 @@ data class SyncProfile(
     val localPath: String,
     val remotePath: String,
     val syncIntervalMinutes: Int = 0,
-    val conflictStrategy: ConflictStrategy = ConflictStrategy.NEWER_WINS,
+    val conflictStrategy: ConflictStrategy = ConflictStrategy.KEEP_BOTH,
     val syncCondition: SyncCondition = SyncCondition.TIME_DIFFERENT,
     val autoSyncEnabled: Boolean = false,
     val exclusions: List<String> = listOf(".git", ".DS_Store", "Thumbs.db", ".sftp-sync-state.json")
+)
+
+@Serializable
+data class ConflictItem(
+    val id: String = "",
+    val profileId: String,
+    val relativePath: String,
+    val localSize: Long = 0L,
+    val localLastModified: Long = 0L,
+    val remoteSize: Long = 0L,
+    val remoteLastModified: Long = 0L,
+    val originalPath: String = ""
 )
 

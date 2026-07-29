@@ -32,7 +32,7 @@ class BiSyncEngineRunner(
         checkDirectoryApproval: suspend (isLocal: Boolean, path: String) -> Boolean
     ): SyncState = withContext(Dispatchers.IO) {
         val timestamp = System.currentTimeMillis()
-        onProgress("원격 SFTP 서버 연결 중...", 0.02f)
+        onProgress("원격 SFTP 서버 상태 감지 중...", 0.02f)
 
         if (!sftpClient.connect()) {
             val errLog = SyncLog(
@@ -40,14 +40,48 @@ class BiSyncEngineRunner(
                 profileId = profile.id,
                 profileName = profile.name,
                 relativePath = "",
-                actionType = "CONNECT",
+                actionType = "HEALTH_CHECK",
                 status = SyncLogStatus.ERROR,
-                message = "SFTP 서버 연결에 실패했습니다 (${profile.host}:${profile.port})"
+                message = "원격 SFTP 서버 상태 이상: 연결에 실패했습니다 (${profile.host}:${profile.port})"
             )
             onLog(errLog)
-            onProgress("SFTP 연결 실패", 1.0f)
+            onProgress("SFTP 서버 상태 이상 (연결 실패)", 1.0f)
             return@withContext lastState
         }
+
+        // SFTP 서버 응답 건전성 추가 테스트
+        val isServerHealthy = try {
+            sftpClient.isConnected
+        } catch (e: Exception) {
+            false
+        }
+
+        if (!isServerHealthy) {
+            val errLog = SyncLog(
+                timestamp = System.currentTimeMillis(),
+                profileId = profile.id,
+                profileName = profile.name,
+                relativePath = "",
+                actionType = "HEALTH_CHECK",
+                status = SyncLogStatus.ERROR,
+                message = "원격 SFTP 서버 상태 이상: 서버가 응답하지 않습니다."
+            )
+            onLog(errLog)
+            onProgress("SFTP 서버 상태 이상 (응답 없음)", 1.0f)
+            sftpClient.disconnect()
+            return@withContext lastState
+        }
+
+        onLog(SyncLog(
+            timestamp = System.currentTimeMillis(),
+            profileId = profile.id,
+            profileName = profile.name,
+            relativePath = "",
+            actionType = "HEALTH_CHECK",
+            status = SyncLogStatus.SUCCESS,
+            message = "원격 SFTP 서버 상태 정상 확인 (${profile.host}:${profile.port})"
+        ))
+        onProgress("원격 SFTP 서버 상태 정상", 0.04f)
 
         val sftpClients = mutableListOf(sftpClient)
         if (concurrency > 1) {
@@ -287,6 +321,26 @@ class BiSyncEngineRunner(
                 }
             )
 
+            val newFilesMetadata = lastState.files.toMutableMap()
+
+            // 동기화 대상 경로 중 양쪽에 동일하게 존재하는 파일의 메타데이터 및 해시를 갱신하여
+            // 다음 동기화 시 중복 충돌(Conflict) 판정 및 _conflict_ 파일 생성을 방지
+            for (path in allPaths) {
+                val local = localFiles[path]
+                val remote = remoteFiles[path]
+                if (local != null && remote != null && !local.isDirectory && !remote.isDirectory) {
+                    val hash = localHashes[path] ?: remoteHashes[path] ?: lastStateFiles[path]?.hash
+                    newFilesMetadata[path] = SyncFileMetadata(
+                        relativePath = path,
+                        size = local.size,
+                        lastModifiedLocal = local.lastModified,
+                        lastModifiedRemote = remote.lastModified,
+                        isDirectory = false,
+                        hash = hash
+                    )
+                }
+            }
+
             if (pendingActions.isEmpty()) {
                 onProgress("동기화 완료 (변경 사항 없음)", 1.0f)
                 onLog(SyncLog(
@@ -298,12 +352,15 @@ class BiSyncEngineRunner(
                     status = SyncLogStatus.SUCCESS,
                     message = "동기화 완료: 변경 사항이 없습니다."
                 ))
-                return@withContext lastState.copy(lastSyncTime = timestamp)
+                return@withContext SyncState(
+                    profileId = profile.id,
+                    lastSyncTime = timestamp,
+                    files = newFilesMetadata
+                )
             }
 
             val totalActions = pendingActions.size
             var completedActions = 0
-            val newFilesMetadata = lastState.files.toMutableMap()
 
             val progressMutex = Mutex()
             val actionChannel = Channel<SyncAction>(Channel.UNLIMITED)

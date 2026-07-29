@@ -33,7 +33,10 @@ data class UiState(
     val androidPermissionGranted: Boolean = true,
     val directoryApprovalRequest: DirectoryApprovalRequest? = null,
     val concurrency: Int = 2,
-    val parallelSyncEnabled: Boolean = true
+    val parallelSyncEnabled: Boolean = true,
+    val conflictFiles: List<ConflictItem> = emptyList(),
+    val showConflictModal: Boolean = false,
+    val selectedConflictItem: ConflictItem? = null
 )
 
 enum class AppScreen {
@@ -145,11 +148,129 @@ class SyncViewModel {
             
             // Start/stop background service on Android
             checkAndControlBackgroundService(loadedProfiles)
+            selected?.let { scanConflicts(it) }
         }
     }
 
     fun selectProfile(profile: SyncProfile) {
         state = state.copy(selectedProfile = profile)
+        scanConflicts(profile)
+    }
+
+    fun openConflictModal(item: ConflictItem? = null) {
+        state = state.copy(
+            showConflictModal = true,
+            selectedConflictItem = item ?: state.conflictFiles.firstOrNull()
+        )
+    }
+
+    fun closeConflictModal() {
+        state = state.copy(
+            showConflictModal = false,
+            selectedConflictItem = null
+        )
+    }
+
+    fun selectConflictItem(item: ConflictItem) {
+        state = state.copy(selectedConflictItem = item)
+    }
+
+    fun scanConflicts(profile: SyncProfile) {
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val localClient = createLocalFileClient()
+                if (!localClient.exists(profile.localPath)) return@launch
+
+                val localFiles = localClient.listFiles(profile.localPath)
+                val conflictList = mutableListOf<ConflictItem>()
+
+                for (file in localFiles) {
+                    if (file.isDirectory) continue
+                    if (file.relativePath.contains("_conflict_")) {
+                        val origPath = file.relativePath.replace(Regex("_conflict_[0-9]+"), "")
+                        val origFile = localFiles.firstOrNull { it.relativePath == origPath }
+
+                        conflictList.add(
+                            ConflictItem(
+                                id = file.relativePath,
+                                profileId = profile.id,
+                                relativePath = file.relativePath,
+                                localSize = file.size,
+                                localLastModified = file.lastModified,
+                                remoteSize = origFile?.size ?: 0L,
+                                remoteLastModified = origFile?.lastModified ?: 0L,
+                                originalPath = origPath
+                            )
+                        )
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    state = state.copy(conflictFiles = conflictList)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun resolveConflictKeepLocal(item: ConflictItem) {
+        val profile = state.selectedProfile ?: return
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val localClient = createLocalFileClient()
+                val conflictFilePath = "${profile.localPath}/${item.relativePath}"
+
+                if (item.originalPath.isNotEmpty()) {
+                    val origFilePath = "${profile.localPath}/${item.originalPath}"
+                    localClient.deleteFile(origFilePath)
+                    java.io.File(conflictFilePath).renameTo(java.io.File(origFilePath))
+                } else {
+                    localClient.deleteFile(conflictFilePath)
+                }
+
+                withContext(Dispatchers.Main) {
+                    ProfileManager.addLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = item.relativePath,
+                        actionType = "CONFLICT_RESOLVE",
+                        status = SyncLogStatus.SUCCESS,
+                        message = "충돌 해결: 로컬본 채택 및 충돌 파일 정리 완료"
+                    ))
+                    scanConflicts(profile)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun resolveConflictDelete(item: ConflictItem) {
+        val profile = state.selectedProfile ?: return
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val localClient = createLocalFileClient()
+                val conflictFilePath = "${profile.localPath}/${item.relativePath}"
+                localClient.deleteFile(conflictFilePath)
+
+                withContext(Dispatchers.Main) {
+                    ProfileManager.addLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = item.relativePath,
+                        actionType = "CONFLICT_DELETE",
+                        status = SyncLogStatus.SUCCESS,
+                        message = "충돌 해결: 충돌 복사본 삭제 완료"
+                    ))
+                    scanConflicts(profile)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun navigateTo(screen: AppScreen) {

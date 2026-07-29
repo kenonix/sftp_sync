@@ -20,9 +20,9 @@ class GitSyncEngineRunner(
         checkDirectoryApproval: suspend (isLocal: Boolean, path: String) -> Boolean
     ): GitSyncState = withContext(Dispatchers.IO) {
         val timestamp = System.currentTimeMillis()
-        onProgress("Git 저장소 연결 중...", 0.02f)
+        onProgress("Git 원격 서버 상태 감지 중...", 0.02f)
 
-        // Git 저장소 초기화 또는 연결
+        // Git 저장소 초기화 또는 연결 상태 점검
         val localPath = profile.localPath
         if (!gitClient.connect()) {
             onLog(SyncLog(
@@ -30,13 +30,24 @@ class GitSyncEngineRunner(
                 profileId = profile.id,
                 profileName = profile.name,
                 relativePath = "",
-                actionType = "GIT_CONNECT",
+                actionType = "HEALTH_CHECK",
                 status = SyncLogStatus.ERROR,
-                message = "Git 저장소 연결에 실패했습니다"
+                message = "Git 원격 서버 상태 이상: 저장소 연결에 실패했습니다"
             ))
-            onProgress("Git 연결 실패", 1.0f)
+            onProgress("Git 서버 상태 이상 (연결 실패)", 1.0f)
             return@withContext lastState
         }
+
+        onLog(SyncLog(
+            timestamp = System.currentTimeMillis(),
+            profileId = profile.id,
+            profileName = profile.name,
+            relativePath = "",
+            actionType = "HEALTH_CHECK",
+            status = SyncLogStatus.SUCCESS,
+            message = "Git 원격 서버 상태 정상 확인"
+        ))
+        onProgress("Git 원격 서버 상태 정상", 0.04f)
 
         // Git 원격 저장소에서 최신 커밋 풀(Pull)
         if (profile.gitRepositoryUrl.isNotEmpty()) {

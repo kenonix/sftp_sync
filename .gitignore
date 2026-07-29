@@ -86,3 +86,4 @@ id_ed25519
 *.orig
 *.patch
 *.rej
+.gradle_home/

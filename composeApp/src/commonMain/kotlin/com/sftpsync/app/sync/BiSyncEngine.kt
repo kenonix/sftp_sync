@@ -136,8 +136,21 @@ object BiSyncEngine {
 
                 // 2. Exists in Local and Remote, but NOT in Last State (both added independently)
                 local != null && remote != null && meta == null -> {
-                    if (local.size != remote.size) {
-                        // Different sizes, definitely conflict
+                    val localHash = getLocalHash(path)
+                    val remoteHash = getRemoteHash(path)
+
+                    val areIdentical = if (localHash != null && remoteHash != null) {
+                        localHash == remoteHash
+                    } else {
+                        // 해시 조회가 불가능한 경우 파일 크기가 같고 타임스탬프 차이가 2초 이내(SFTP 1초 단위 오차 감안)이면 동일 파일로 간주
+                        local.size == remote.size && Math.abs(local.lastModified - remote.lastModified) <= 2000L
+                    }
+
+                    if (areIdentical) {
+                        // Consider them in sync, just record in state
+                        actions.add(SyncAction(path, SyncActionType.NONE, false))
+                    } else {
+                        // Conflict
                         actions.add(SyncAction(
                             relativePath = path,
                             actionType = SyncActionType.CONFLICT,
@@ -146,30 +159,6 @@ object BiSyncEngine {
                             localLastModified = local.lastModified,
                             remoteLastModified = remote.lastModified
                         ))
-                    } else {
-                        val localHash = getLocalHash(path)
-                        val remoteHash = getRemoteHash(path)
-
-                        val areIdentical = if (localHash != null && remoteHash != null) {
-                            localHash == remoteHash
-                        } else {
-                            local.size == remote.size && local.lastModified == remote.lastModified
-                        }
-
-                        if (areIdentical) {
-                            // Consider them in sync, just record in state
-                            actions.add(SyncAction(path, SyncActionType.NONE, false))
-                        } else {
-                            // Conflict
-                            actions.add(SyncAction(
-                                relativePath = path,
-                                actionType = SyncActionType.CONFLICT,
-                                isDirectory = false,
-                                size = local.size,
-                                localLastModified = local.lastModified,
-                                remoteLastModified = remote.lastModified
-                            ))
-                        }
                     }
                 }
 
