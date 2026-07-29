@@ -2336,8 +2336,8 @@ fun ConflictResolutionOverlay(
 fun formatSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB")
-    val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
-    return "${(bytes / kotlin.math.pow(1024.0, digitGroups.toDouble()) * 100).toInt() / 100.0} ${units[digitGroups]}"
+    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
+    return "${(bytes / Math.pow(1024.0, digitGroups.toDouble()) * 100).toInt() / 100.0} ${units[digitGroups]}"
 }
 
 fun formatTimestamp(timestamp: Long): String {
