@@ -216,6 +216,18 @@ class SyncViewModel {
 
     fun resolveConflictKeepLocal(item: ConflictItem) {
         val profile = state.selectedProfile ?: return
+        val currentIndex = state.conflictFiles.indexOfFirst { it.relativePath == item.relativePath }
+        val remainingFiles = state.conflictFiles.filter { it.relativePath != item.relativePath }
+        val nextItem = if (remainingFiles.isNotEmpty()) {
+            val nextIdx = if (currentIndex >= 0 && currentIndex < remainingFiles.size) currentIndex else remainingFiles.size - 1
+            remainingFiles[nextIdx]
+        } else null
+
+        state = state.copy(
+            selectedConflictItem = nextItem,
+            conflictFiles = remainingFiles
+        )
+
         coroutineScope.launch(Dispatchers.IO) {
             try {
                 val localClient = createLocalFileClient()
@@ -249,6 +261,18 @@ class SyncViewModel {
 
     fun resolveConflictDelete(item: ConflictItem) {
         val profile = state.selectedProfile ?: return
+        val currentIndex = state.conflictFiles.indexOfFirst { it.relativePath == item.relativePath }
+        val remainingFiles = state.conflictFiles.filter { it.relativePath != item.relativePath }
+        val nextItem = if (remainingFiles.isNotEmpty()) {
+            val nextIdx = if (currentIndex >= 0 && currentIndex < remainingFiles.size) currentIndex else remainingFiles.size - 1
+            remainingFiles[nextIdx]
+        } else null
+
+        state = state.copy(
+            selectedConflictItem = nextItem,
+            conflictFiles = remainingFiles
+        )
+
         coroutineScope.launch(Dispatchers.IO) {
             try {
                 val localClient = createLocalFileClient()
@@ -264,6 +288,80 @@ class SyncViewModel {
                         actionType = "CONFLICT_DELETE",
                         status = SyncLogStatus.SUCCESS,
                         message = "충돌 해결: 충돌 복사본 삭제 완료"
+                    ))
+                    scanConflicts(profile)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun resolveBatchConflictsKeepLocal(items: List<ConflictItem>) {
+        val profile = state.selectedProfile ?: return
+        val itemPaths = items.map { it.relativePath }.toSet()
+        val remainingFiles = state.conflictFiles.filter { it.relativePath !in itemPaths }
+        state = state.copy(
+            selectedConflictItem = remainingFiles.firstOrNull(),
+            conflictFiles = remainingFiles
+        )
+
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val localClient = createLocalFileClient()
+                items.forEach { item ->
+                    val conflictFilePath = "${profile.localPath}/${item.relativePath}"
+                    if (item.originalPath.isNotEmpty()) {
+                        val origFilePath = "${profile.localPath}/${item.originalPath}"
+                        localClient.deleteFile(origFilePath)
+                        java.io.File(conflictFilePath).renameTo(java.io.File(origFilePath))
+                    } else {
+                        localClient.deleteFile(conflictFilePath)
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    ProfileManager.addLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = "${items.size}개 파일",
+                        actionType = "CONFLICT_BATCH_RESOLVE",
+                        status = SyncLogStatus.SUCCESS,
+                        message = "일괄 충돌 해결: 복사본 ${items.size}개로 원본 대체 완료"
+                    ))
+                    scanConflicts(profile)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun resolveBatchConflictsDelete(items: List<ConflictItem>) {
+        val profile = state.selectedProfile ?: return
+        val itemPaths = items.map { it.relativePath }.toSet()
+        val remainingFiles = state.conflictFiles.filter { it.relativePath !in itemPaths }
+        state = state.copy(
+            selectedConflictItem = remainingFiles.firstOrNull(),
+            conflictFiles = remainingFiles
+        )
+
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                val localClient = createLocalFileClient()
+                items.forEach { item ->
+                    val conflictFilePath = "${profile.localPath}/${item.relativePath}"
+                    localClient.deleteFile(conflictFilePath)
+                }
+                withContext(Dispatchers.Main) {
+                    ProfileManager.addLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = "${items.size}개 파일",
+                        actionType = "CONFLICT_BATCH_DELETE",
+                        status = SyncLogStatus.SUCCESS,
+                        message = "일괄 충돌 해결: 복사본 ${items.size}개 삭제 완료"
                     ))
                     scanConflicts(profile)
                 }

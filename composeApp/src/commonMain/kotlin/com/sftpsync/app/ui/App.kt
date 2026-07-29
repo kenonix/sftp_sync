@@ -2162,6 +2162,11 @@ fun ConflictResolutionOverlay(
     viewModel: SyncViewModel
 ) {
     val selectedItem = state.selectedConflictItem ?: state.conflictFiles.firstOrNull()
+    var isGroupedMode by remember { mutableStateOf(true) }
+
+    val currentIndex = if (selectedItem != null) {
+        state.conflictFiles.indexOfFirst { it.relativePath == selectedItem.relativePath }
+    } else -1
 
     Box(
         modifier = Modifier
@@ -2172,8 +2177,8 @@ fun ConflictResolutionOverlay(
     ) {
         Card(
             modifier = Modifier
-                .width(820.dp)
-                .fillMaxHeight(0.85f)
+                .width(860.dp)
+                .fillMaxHeight(0.88f)
                 .padding(16.dp),
             colors = CardDefaults.cardColors(containerColor = Slate900),
             shape = RoundedCornerShape(16.dp),
@@ -2183,7 +2188,7 @@ fun ConflictResolutionOverlay(
                 // Header
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 ) {
                     Icon(
                         Icons.Filled.Build,
@@ -2193,52 +2198,203 @@ fun ConflictResolutionOverlay(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        "충돌 파일 비교 및 정리",
+                        "충돌 파일 비교 및 정리 (${state.conflictFiles.size}개)",
                         fontWeight = FontWeight.Bold,
                         color = TextWhite,
                         fontSize = 18.sp
                     )
                     Spacer(modifier = Modifier.weight(1f))
+
+                    if (state.conflictFiles.isNotEmpty()) {
+                        Button(
+                            onClick = { viewModel.resolveBatchConflictsKeepLocal(state.conflictFiles) },
+                            colors = ButtonDefaults.buttonColors(containerColor = CyanGlow),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("⚡ 전체 복사본 채택", color = Slate900, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { viewModel.resolveBatchConflictsDelete(state.conflictFiles) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("🗑️ 전체 복사본 삭제", color = TextLight, fontSize = 11.sp)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+
                     IconButton(onClick = { viewModel.closeConflictModal() }) {
                         Icon(Icons.Filled.Close, contentDescription = "닫기", tint = TextLight)
                     }
                 }
 
+                // View Mode Toggle Switcher
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Slate800)
+                            .padding(2.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isGroupedMode) CyanGlow else Color.Transparent)
+                                .clickable { isGroupedMode = true }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                "📁 폴더별 그룹 보기",
+                                color = if (isGroupedMode) Slate900 else TextLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (!isGroupedMode) CyanGlow else Color.Transparent)
+                                .clickable { isGroupedMode = false }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                "📋 전체 목록 보기",
+                                color = if (!isGroupedMode) Slate900 else TextLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
                 HorizontalDivider(color = Slate700)
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    // Left list of conflict files
+                    // Left list panel
                     LazyColumn(
-                        modifier = Modifier.width(260.dp).fillMaxHeight(),
+                        modifier = Modifier.width(300.dp).fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.conflictFiles) { item ->
-                            val isSelected = selectedItem?.relativePath == item.relativePath
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) Slate800 else Slate900)
-                                    .border(1.dp, if (isSelected) CyanGlow else Slate700, RoundedCornerShape(8.dp))
-                                    .clickable { viewModel.selectConflictItem(item) }
-                                    .padding(12.dp)
-                            ) {
-                                Column {
-                                    Text(
-                                        item.relativePath,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) TextWhite else TextLight,
-                                        fontSize = 13.sp,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        "크기: ${formatSize(item.localSize)}",
-                                        color = TextMuted,
-                                        fontSize = 11.sp
-                                    )
+                        if (isGroupedMode) {
+                            val grouped = state.conflictFiles.groupBy { item ->
+                                val rel = item.relativePath
+                                val idx = rel.lastIndexOf('/')
+                                if (idx >= 0) rel.substring(0, idx) else "루트 폴더"
+                            }
+
+                            grouped.forEach { (folderName, folderItems) ->
+                                item {
+                                    Card(
+                                        colors = CardDefaults.cardColors(containerColor = Slate800),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
+                                    ) {
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            Text(
+                                                "📁 $folderName (${folderItems.size})",
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyanGlow,
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Button(
+                                                    onClick = { viewModel.resolveBatchConflictsKeepLocal(folderItems) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = CyanGlow.copy(alpha = 0.2f)),
+                                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                                    modifier = Modifier.weight(1f).height(26.dp),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text("폴더 전체 채택", color = CyanGlow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                Button(
+                                                    onClick = { viewModel.resolveBatchConflictsDelete(folderItems) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Slate700),
+                                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                                    modifier = Modifier.weight(1f).height(26.dp),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text("폴더 전체 삭제", color = TextLight, fontSize = 10.sp)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                items(folderItems) { item ->
+                                    val isSelected = selectedItem?.relativePath == item.relativePath
+                                    val fileNameOnly = if (item.relativePath.contains('/')) {
+                                        item.relativePath.substringAfterLast('/')
+                                    } else item.relativePath
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 8.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isSelected) Slate800 else Slate900)
+                                            .border(1.dp, if (isSelected) CyanGlow else Slate700, RoundedCornerShape(6.dp))
+                                            .clickable { viewModel.selectConflictItem(item) }
+                                            .padding(10.dp)
+                                    ) {
+                                        Column {
+                                            Text(
+                                                fileNameOnly,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) TextWhite else TextLight,
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                "크기: ${formatSize(item.localSize)}",
+                                                color = TextMuted,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            items(state.conflictFiles) { item ->
+                                val isSelected = selectedItem?.relativePath == item.relativePath
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) Slate800 else Slate900)
+                                        .border(1.dp, if (isSelected) CyanGlow else Slate700, RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.selectConflictItem(item) }
+                                        .padding(12.dp)
+                                ) {
+                                    Column {
+                                        Text(
+                                            item.relativePath,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) TextWhite else TextLight,
+                                            fontSize = 13.sp,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            "크기: ${formatSize(item.localSize)}",
+                                            color = TextMuted,
+                                            fontSize = 11.sp
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2251,12 +2407,55 @@ fun ConflictResolutionOverlay(
                     // Right detail comparison view
                     if (selectedItem != null) {
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            Text(
-                                "파일 비교 상세",
-                                fontWeight = FontWeight.Bold,
-                                color = TextWhite,
-                                fontSize = 16.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    "파일 비교 상세",
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextWhite,
+                                    fontSize = 16.sp
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+
+                                Text(
+                                    "${currentIndex + 1} / ${state.conflictFiles.size}",
+                                    color = TextMuted,
+                                    fontSize = 12.sp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        if (currentIndex > 0) {
+                                            viewModel.selectConflictItem(state.conflictFiles[currentIndex - 1])
+                                        }
+                                    },
+                                    enabled = currentIndex > 0,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text("◀ 이전", fontSize = 11.sp, color = TextLight)
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Button(
+                                    onClick = {
+                                        if (currentIndex >= 0 && currentIndex < state.conflictFiles.size - 1) {
+                                            viewModel.selectConflictItem(state.conflictFiles[currentIndex + 1])
+                                        }
+                                    },
+                                    enabled = currentIndex >= 0 && currentIndex < state.conflictFiles.size - 1,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text("다음 ▶", fontSize = 11.sp, color = TextLight)
+                                }
+                            }
+
                             Spacer(modifier = Modifier.height(12.dp))
 
                             // Comparison Cards
@@ -2314,7 +2513,7 @@ fun ConflictResolutionOverlay(
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("이 복사본으로 원본 대체", color = Slate900, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("이 복사본으로 대체 (다음 ➔)", color = Slate900, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
 
                                 Button(
@@ -2323,7 +2522,7 @@ fun ConflictResolutionOverlay(
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("충돌 복사본 삭제", color = TextLight, fontSize = 13.sp)
+                                    Text("충돌 복사본 삭제 (다음 ➔)", color = TextLight, fontSize = 13.sp)
                                 }
                             }
                         }
