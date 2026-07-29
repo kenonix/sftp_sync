@@ -522,6 +522,7 @@ fun DashboardScreen(
                         )
                     }
                 }
+            }
         }
 
         if (state.conflictFiles.isNotEmpty()) {
