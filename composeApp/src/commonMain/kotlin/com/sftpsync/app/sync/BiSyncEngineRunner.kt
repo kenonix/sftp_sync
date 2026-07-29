@@ -757,12 +757,16 @@ class BiSyncEngineRunner(
         )
 
         val localConflictFile = java.io.File(localFileConflict)
+        val remoteConflictModifiedTime = client.getFileLastModified(remoteFileConflict).let { if (it > 0L) it else remoteOriginal.lastModified }
+        localClient.setLastModified(localFileConflict, remoteConflictModifiedTime)
+        val actualLocalConflictMtime = localConflictFile.lastModified()
         val localConflictHash = localClient.getFileHash(localFileConflict)
+
         newMetadata[finalRemoteRenamed] = SyncFileMetadata(
             relativePath = finalRemoteRenamed,
             size = localConflictFile.length(),
-            lastModifiedLocal = localConflictFile.lastModified(),
-            lastModifiedRemote = remoteOriginal.lastModified,
+            lastModifiedLocal = actualLocalConflictMtime,
+            lastModifiedRemote = remoteConflictModifiedTime,
             isDirectory = false,
             hash = localConflictHash
         )

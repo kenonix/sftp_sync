@@ -79,20 +79,30 @@ object BiSyncEngine {
                     val localChanged = if (localHash != null && meta.hash != null) {
                         localHash != meta.hash
                     } else {
-                        local.size != meta.size || local.lastModified != meta.lastModifiedLocal
+                        local.size != meta.size || Math.abs(local.lastModified - meta.lastModifiedLocal) > 2000L
                     }
 
                     val remoteChanged = if (remoteHash != null && meta.hash != null) {
                         remoteHash != meta.hash
                     } else {
-                        remote.size != meta.size || remote.lastModified != meta.lastModifiedRemote
+                        remote.size != meta.size || Math.abs(remote.lastModified - meta.lastModifiedRemote) > 2000L
                     }
 
                     when {
                         localChanged && remoteChanged -> {
-                            if (localHash != null && remoteHash != null && localHash == remoteHash) {
-                                // Content is identical, no conflict, resolve to NONE
+                            val hashesEqual = localHash != null && remoteHash != null && localHash == remoteHash
+                            val timesAndSizesEqual = local.size == remote.size && Math.abs(local.lastModified - remote.lastModified) <= 2000L
+
+                            if (hashesEqual || timesAndSizesEqual) {
+                                // Content or size/mtime is identical, no conflict needed
                                 actions.add(SyncAction(path, SyncActionType.NONE, false))
+                            } else if (isConflictCopyFile(path)) {
+                                // Prevent recursive conflict duplication on existing _conflict_ files
+                                if (local.lastModified >= remote.lastModified) {
+                                    actions.add(SyncAction(path, SyncActionType.UPLOAD, false, local.size, local.lastModified, remote.lastModified))
+                                } else {
+                                    actions.add(SyncAction(path, SyncActionType.DOWNLOAD, false, remote.size, local.lastModified, remote.lastModified))
+                                }
                             } else {
                                 // CONFLICT: Both modified since last sync
                                 actions.add(SyncAction(
@@ -149,6 +159,13 @@ object BiSyncEngine {
                     if (areIdentical) {
                         // Consider them in sync, just record in state
                         actions.add(SyncAction(path, SyncActionType.NONE, false))
+                    } else if (isConflictCopyFile(path)) {
+                        // Prevent recursive conflict duplication on existing _conflict_ files
+                        if (local.lastModified >= remote.lastModified) {
+                            actions.add(SyncAction(path, SyncActionType.UPLOAD, false, local.size, local.lastModified, remote.lastModified))
+                        } else {
+                            actions.add(SyncAction(path, SyncActionType.DOWNLOAD, false, remote.size, local.lastModified, remote.lastModified))
+                        }
                     } else {
                         // Conflict
                         actions.add(SyncAction(
@@ -286,5 +303,9 @@ object BiSyncEngine {
                 action
             }
         }
+    }
+
+    private fun isConflictCopyFile(path: String): Boolean {
+        return path.contains("_conflict_")
     }
 }
