@@ -177,6 +177,14 @@ class SyncForegroundService : Service() {
 
         try {
             serviceScope.launch {
+                val syncLogs = com.sftpsync.app.utils.ProfileManager.loadLogs().toMutableList()
+                fun appendBackgroundLog(log: com.sftpsync.app.models.SyncLog) {
+                    syncLogs.add(0, log)
+                    if (syncLogs.size > 500) {
+                        syncLogs.removeAt(syncLogs.lastIndex)
+                    }
+                }
+
                 try {
                     // 알림창의 내용을 동기화 모드로 역동적으로 갱신
                     updateNotification("동기화 진행 중: ${profile.name}")
@@ -202,10 +210,11 @@ class SyncForegroundService : Service() {
                             profile = profile,
                             lastState = lastState,
                             onProgress = { _, _ -> },
-                            onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
+                            onLog = { log -> appendBackgroundLog(log) },
                             checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리
                         )
                         com.sftpsync.app.utils.ProfileManager.saveGitState(updatedState)
+                        com.sftpsync.app.utils.ProfileManager.saveLogs(syncLogs)
                     } else {
                         // SFTP 양방향 동기화 모드
                         val parallelEnabled = try {
@@ -235,13 +244,15 @@ class SyncForegroundService : Service() {
                             lastState = lastState,
                             concurrency = concurrency,
                             onProgress = { _, _ -> },
-                            onLog = { log -> com.sftpsync.app.utils.ProfileManager.addLog(log) },
+                            onLog = { log -> appendBackgroundLog(log) },
                             checkDirectoryApproval = { _, _ -> true } // 백그라운드에서는 팝업 대기를 하지 않고 즉시 자동 승인 처리
                         )
                         com.sftpsync.app.utils.ProfileManager.saveState(updatedState)
+                        com.sftpsync.app.utils.ProfileManager.saveLogs(syncLogs)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    com.sftpsync.app.utils.ProfileManager.saveLogs(syncLogs)
                 } finally {
                     // 락을 반드시 해제하고 알림 내용을 상시 모드로 복구
                     synchronized(com.sftpsync.app.utils.SyncLock) {

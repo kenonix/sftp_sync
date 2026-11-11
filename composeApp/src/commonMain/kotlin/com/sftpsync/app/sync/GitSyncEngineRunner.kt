@@ -81,9 +81,12 @@ class GitSyncEngineRunner(
                         profileName = profile.name,
                         relativePath = "",
                         actionType = "PULL",
-                        status = SyncLogStatus.WARNING,
-                        message = "원격 저장소 풀(Pull) 실패 (원격 저장소가 비어있거나 접근 권한이 없을 수 있습니다)"
+                        status = SyncLogStatus.ERROR,
+                        message = "원격 저장소 풀(Pull) 실패: 원격 서버 연결이 끊어졌거나 접근할 수 없어 동기화를 중단합니다."
                     ))
+                    onProgress("Git 원격 서버 연결 실패 (동기화 중단)", 1.0f)
+                    gitClient.disconnect()
+                    return@withContext lastState
                 }
             }
         }

@@ -180,7 +180,7 @@ object ProfileManager {
                 // 2. Check each file
                 for ((path, localFile) in filteredLocalFilesNoDir) {
                     val lastModified = trackedFiles[path] ?: return true
-                    if (localFile.lastModified != lastModified) return true
+                    if (Math.abs(localFile.lastModified - lastModified) > 2000L) return true
                 }
             } else {
                 val lastState = loadState(profile.id)
@@ -195,7 +195,7 @@ object ProfileManager {
                 // 2. Check each file
                 for ((path, localFile) in filteredLocalFilesNoDir) {
                     val meta = filteredStateFiles[path] ?: return true
-                    if (localFile.size != meta.size || localFile.lastModified != meta.lastModifiedLocal) {
+                    if (localFile.size != meta.size || Math.abs(localFile.lastModified - meta.lastModifiedLocal) > 2000L) {
                         return true
                     }
                 }

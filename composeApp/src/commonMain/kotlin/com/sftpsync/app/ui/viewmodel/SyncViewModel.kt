@@ -551,6 +551,16 @@ class SyncViewModel {
 
         try {
             coroutineScope.launch {
+                val syncLogs = state.logs.toMutableList()
+
+                fun appendLog(log: SyncLog) {
+                    syncLogs.add(0, log)
+                    if (syncLogs.size > 500) {
+                        syncLogs.removeAt(syncLogs.lastIndex)
+                    }
+                    state = state.copy(logs = syncLogs.toList())
+                }
+
                 try {
                     val localClient = createLocalFileClient()
 
@@ -579,9 +589,7 @@ class SyncViewModel {
                                 )
                             },
                             onLog = { log ->
-                                ProfileManager.addLog(log)
-                                val loadedLogs = ProfileManager.loadLogs()
-                                state = state.copy(logs = loadedLogs)
+                                appendLog(log)
                             },
                             checkDirectoryApproval = { isLocal, path ->
                                 if (!isManual) {
@@ -605,6 +613,7 @@ class SyncViewModel {
 
                         withContext(Dispatchers.Default) {
                             ProfileManager.saveGitState(updatedState)
+                            ProfileManager.saveLogs(syncLogs.toList())
                         }
                     } else {
                         val sftpClient = createSftpClient(profile)
@@ -625,10 +634,7 @@ class SyncViewModel {
                                 )
                             },
                             onLog = { log ->
-                                ProfileManager.addLog(log)
-                                // Reload logs in UI
-                                val loadedLogs = ProfileManager.loadLogs()
-                                state = state.copy(logs = loadedLogs)
+                                appendLog(log)
                             },
                             checkDirectoryApproval = { isLocal, path ->
                                 if (!isManual) {
@@ -652,6 +658,7 @@ class SyncViewModel {
 
                         withContext(Dispatchers.Default) {
                             ProfileManager.saveState(updatedState)
+                            ProfileManager.saveLogs(syncLogs.toList())
                         }
                     }
 
@@ -661,10 +668,13 @@ class SyncViewModel {
                         syncStatusText = "동기화 완료"
                     )
                     
-                    // Auto refresh logs
-                    loadAllData()
+                    // Refresh conflict state for the selected profile
+                    state.selectedProfile?.let { scanConflicts(it) }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    withContext(Dispatchers.Default) {
+                        ProfileManager.saveLogs(syncLogs.toList())
+                    }
                     state = state.copy(
                         isSyncing = false,
                         syncStatusText = "동기화 실패: ${e.message ?: "알 수 없는 오류"}"

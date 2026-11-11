@@ -80,7 +80,10 @@ class JschSftpClient(
     }
 
     override fun listFiles(remotePath: String): List<SyncFile> {
-        if (!isConnected && !connect()) return emptyList()
+        lastErrorMsg = null
+        if (!isConnected && !connect()) {
+            throw java.io.IOException("원격 SFTP 서버에 연결되어 있지 않습니다 (${lastErrorMsg ?: "연결 실패"})")
+        }
         
         val result = mutableListOf<SyncFile>()
         try {
@@ -88,6 +91,8 @@ class JschSftpClient(
             listRecursive(cleanRoot, "", result)
         } catch (e: Exception) {
             e.printStackTrace()
+            lastErrorMsg = e.message ?: e.toString()
+            throw java.io.IOException("원격 파일 목록 수집 중 서버 연결이 끊어졌거나 오류가 발생했습니다: ${lastErrorMsg}", e)
         }
         return result
     }
