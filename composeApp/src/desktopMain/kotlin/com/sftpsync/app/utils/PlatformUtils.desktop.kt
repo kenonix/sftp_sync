@@ -197,9 +197,11 @@ actual fun startFileWatcher(
                         }
                     }
 
-                    if (hasValidChanges) {
+                    if (hasValidChanges && !SyncLock.isSyncing) {
                         withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            onChanged()
+                            if (!SyncLock.isSyncing) {
+                                onChanged()
+                            }
                         }
                     }
                 }

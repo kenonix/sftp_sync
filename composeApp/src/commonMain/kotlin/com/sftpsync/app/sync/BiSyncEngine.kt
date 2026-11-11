@@ -47,14 +47,14 @@ object BiSyncEngine {
         val lastStateFiles = lastState.files
 
         suspend fun getOrComputeLocalHash(path: String, local: SyncFile, meta: SyncFileMetadata?): String? {
-            if (meta != null && meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal) {
+            if (meta != null && meta.hash != null && local.size == meta.size && Math.abs(local.lastModified - meta.lastModifiedLocal) <= 2000L) {
                 return meta.hash
             }
             return getLocalHash(path)
         }
 
         suspend fun getOrComputeRemoteHash(path: String, remote: SyncFile, meta: SyncFileMetadata?): String? {
-            if (meta != null && meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote) {
+            if (meta != null && meta.hash != null && remote.size == meta.size && Math.abs(remote.lastModified - meta.lastModifiedRemote) <= 2000L) {
                 return meta.hash
             }
             return getRemoteHash(path)
@@ -185,7 +185,7 @@ object BiSyncEngine {
                     val localChanged = if (localHash != null && meta.hash != null) {
                         localHash != meta.hash
                     } else {
-                        local.size != meta.size || local.lastModified != meta.lastModifiedLocal
+                        local.size != meta.size || Math.abs(local.lastModified - meta.lastModifiedLocal) > 2000L
                     }
 
                     if (localChanged) {
@@ -215,7 +215,7 @@ object BiSyncEngine {
                     val remoteChanged = if (remoteHash != null && meta.hash != null) {
                         remoteHash != meta.hash
                     } else {
-                        remote.size != meta.size || remote.lastModified != meta.lastModifiedRemote
+                        remote.size != meta.size || Math.abs(remote.lastModified - meta.lastModifiedRemote) > 2000L
                     }
 
                     if (remoteChanged) {

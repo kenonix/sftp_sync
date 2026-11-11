@@ -188,12 +188,60 @@ class BiSyncEngineRunner(
 
         try {
             onProgress("원격 파일 목록 수집 중...", 0.08f)
-            val remoteFiles = sftpClient.listFiles(profile.remotePath)
-                .associateBy { it.relativePath }
+            val remoteFileList = try {
+                sftpClient.listFiles(profile.remotePath)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                onLog(SyncLog(
+                    timestamp = System.currentTimeMillis(),
+                    profileId = profile.id,
+                    profileName = profile.name,
+                    relativePath = "",
+                    actionType = "SYNC",
+                    status = SyncLogStatus.ERROR,
+                    message = "원격 파일 목록 수집 중 연결이 끊어졌거나 오류가 발생하여 동기화를 중단합니다: ${e.message ?: "연결 끊김"}"
+                ))
+                onProgress("원격 파일 목록 수집 실패 (동기화 중단)", 1.0f)
+                return@withContext lastState
+            }
+
+            if (!sftpClient.isConnected) {
+                onLog(SyncLog(
+                    timestamp = System.currentTimeMillis(),
+                    profileId = profile.id,
+                    profileName = profile.name,
+                    relativePath = "",
+                    actionType = "SYNC",
+                    status = SyncLogStatus.ERROR,
+                    message = "원격 파일 목록 수집 중 SFTP 서버 연결이 끊어져 동기화를 안전하게 중단합니다."
+                ))
+                onProgress("SFTP 서버 연결 끊김 (동기화 중단)", 1.0f)
+                return@withContext lastState
+            }
+
+            val remoteFiles = remoteFileList.associateBy { it.relativePath }
 
             onProgress("로컬 파일 목록 수집 중...", 0.15f)
             val localFiles = localClient.listFiles(profile.localPath)
                 .associateBy { it.relativePath }
+
+            // 안전 장치: 이전에 동기화된 파일들이 존재하는데 원격 파일 목록이 갑자기 완전히 비어있는 경우,
+            // 원격 경로가 실제로 접근 가능하고 서버 연결이 정상인지 재검증하여 오삭제 방지
+            if (remoteFiles.isEmpty() && lastState.files.isNotEmpty() && localFiles.isNotEmpty()) {
+                if (!sftpClient.isConnected || !sftpClient.exists(profile.remotePath)) {
+                    onLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = "",
+                        actionType = "SYNC",
+                        status = SyncLogStatus.ERROR,
+                        message = "원격 경로에 접근할 수 없거나 서버 연결이 불안정하여 로컬 파일 보호를 위해 동기화를 중단합니다."
+                    ))
+                    onProgress("원격 경로 접근 불가 (동기화 중단)", 1.0f)
+                    return@withContext lastState
+                }
+            }
 
             onProgress("동기화 변경사항 비교 중...", 0.20f)
 
@@ -217,27 +265,44 @@ class BiSyncEngineRunner(
                 when {
                     // Case 1: Exists in Local, Remote, and Last State
                     local != null && remote != null && meta != null -> {
-                        if (!(meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal)) {
+                        val localUnchanged = meta.hash != null &&
+                            local.size == meta.size &&
+                            Math.abs(local.lastModified - meta.lastModifiedLocal) <= 2000L
+                        val remoteUnchanged = meta.hash != null &&
+                            remote.size == meta.size &&
+                            Math.abs(remote.lastModified - meta.lastModifiedRemote) <= 2000L
+
+                        if (!localUnchanged) {
                             pathsNeedingLocalHash.add(path)
                         }
-                        if (!(meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote)) {
+                        if (!remoteUnchanged) {
                             pathsNeedingRemoteHash.add(path)
                         }
                     }
                     // Case 2: Exists in Local and Remote, but NOT in Last State (e.g., First Sync)
                     local != null && remote != null && meta == null -> {
-                        pathsNeedingLocalHash.add(path)
-                        pathsNeedingRemoteHash.add(path)
+                        // 크기와 수정 시간이 2초 이내로 동일하면 해시 없이도 동일 파일로 간주 가능하지만,
+                        // 크기가 같고 시간이 다른 경우에만 해시 비교 수행 (크기가 다르면 어차피 해시도 다름)
+                        if (local.size == remote.size && Math.abs(local.lastModified - remote.lastModified) > 2000L) {
+                            pathsNeedingLocalHash.add(path)
+                            pathsNeedingRemoteHash.add(path)
+                        }
                     }
                     // Case 3: Exists in Local, NOT in Remote, exists in Last State (Remote deleted it)
                     local != null && remote == null && meta != null -> {
-                        if (!(meta.hash != null && local.size == meta.size && local.lastModified == meta.lastModifiedLocal)) {
+                        val localUnchanged = meta.hash != null &&
+                            local.size == meta.size &&
+                            Math.abs(local.lastModified - meta.lastModifiedLocal) <= 2000L
+                        if (!localUnchanged && local.size == meta.size) {
                             pathsNeedingLocalHash.add(path)
                         }
                     }
                     // Case 4: NOT in Local, exists in Remote, exists in Last State (Local deleted it)
                     local == null && remote != null && meta != null -> {
-                        if (!(meta.hash != null && remote.size == meta.size && remote.lastModified == meta.lastModifiedRemote)) {
+                        val remoteUnchanged = meta.hash != null &&
+                            remote.size == meta.size &&
+                            Math.abs(remote.lastModified - meta.lastModifiedRemote) <= 2000L
+                        if (!remoteUnchanged && remote.size == meta.size) {
                             pathsNeedingRemoteHash.add(path)
                         }
                     }
@@ -313,12 +378,8 @@ class BiSyncEngineRunner(
                 lastState = lastState,
                 exclusions = profile.exclusions,
                 syncCondition = profile.syncCondition,
-                getLocalHash = { relPath ->
-                    localHashes[relPath] ?: localClient.getFileHash("${profile.localPath}/$relPath")
-                },
-                getRemoteHash = { relPath ->
-                    remoteHashes[relPath] ?: sftpClient.getFileHash("${profile.remotePath}/$relPath")
-                }
+                getLocalHash = { relPath -> localHashes[relPath] },
+                getRemoteHash = { relPath -> remoteHashes[relPath] }
             )
 
             val newFilesMetadata = lastState.files.toMutableMap()
@@ -396,8 +457,9 @@ class BiSyncEngineRunner(
                                         
                                         if (ok) {
                                             val remoteModified = client.getFileLastModified(remoteFile)
-                                            val localModified = localFiles[action.relativePath]?.lastModified ?: System.currentTimeMillis()
-                                            val localHash = localClient.getFileHash(localFile)
+                                            val actualLocalFile = java.io.File(localFile)
+                                            val localModified = if (actualLocalFile.exists()) actualLocalFile.lastModified() else (localFiles[action.relativePath]?.lastModified ?: System.currentTimeMillis())
+                                            val localHash = localHashes[action.relativePath] ?: localClient.getFileHash(localFile)
                                             
                                             progressMutex.withLock {
                                                 newFilesMetadata[action.relativePath] = SyncFileMetadata(
@@ -456,7 +518,7 @@ class BiSyncEngineRunner(
                                             val remoteModified = action.remoteLastModified
                                             localClient.setLastModified(localFile, remoteModified)
                                             val actualLocalModified = java.io.File(localFile).lastModified()
-                                            val localHash = localClient.getFileHash(localFile)
+                                            val localHash = remoteHashes[action.relativePath] ?: localClient.getFileHash(localFile)
                                             
                                             progressMutex.withLock {
                                                 newFilesMetadata[action.relativePath] = SyncFileMetadata(
@@ -572,7 +634,7 @@ class BiSyncEngineRunner(
             }
 
             // Ensure all files that are currently in sync (exist locally and remotely, and not deleted)
-            // are represented in the state metadata.
+            // are represented in the state metadata without blocking on extra full-file hashing.
             for ((path, localFile) in localFiles) {
                 if (localFile.isDirectory) continue
                 if (BiSyncEngine.isExcluded(path, profile.exclusions)) continue
@@ -584,7 +646,7 @@ class BiSyncEngineRunner(
                     if (!wasDeleted) {
                         val remoteFile = remoteFiles[path]
                         if (remoteFile != null) {
-                            val localHash = localHashes[path] ?: localClient.getFileHash("${profile.localPath}/$path")
+                            val localHash = localHashes[path] ?: lastStateFiles[path]?.hash
                             newFilesMetadata[path] = SyncFileMetadata(
                                 relativePath = path,
                                 size = localFile.size,
