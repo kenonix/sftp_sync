@@ -4,6 +4,7 @@ import com.jcraft.jsch.*
 import com.sftpsync.app.models.AuthType
 import com.sftpsync.app.models.SimpleSyncFile
 import com.sftpsync.app.models.SyncFile
+import com.sftpsync.app.utils.BandwidthLimiter
 import java.io.ByteArrayInputStream
 import java.util.*
 
@@ -144,6 +145,7 @@ class JschSftpClient(
                 private var bytesTransferred = 0L
                 override fun init(op: Int, src: String?, dest: String?, max: Long) {}
                 override fun count(count: Long): Boolean {
+                    BandwidthLimiter.throttleDownload(count)
                     bytesTransferred += count
                     onProgress(bytesTransferred)
                     return true
@@ -200,6 +202,7 @@ class JschSftpClient(
                 private var bytesTransferred = 0L
                 override fun init(op: Int, src: String?, dest: String?, max: Long) {}
                 override fun count(count: Long): Boolean {
+                    BandwidthLimiter.throttleUpload(count)
                     bytesTransferred += count
                     onProgress(bytesTransferred)
                     return true
@@ -376,6 +379,7 @@ class JschSftpClient(
                 val buffer = ByteArray(8192)
                 var bytesRead = inputStream.read(buffer)
                 while (bytesRead != -1) {
+                    BandwidthLimiter.throttleDownload(bytesRead.toLong())
                     digest.update(buffer, 0, bytesRead)
                     bytesRead = inputStream.read(buffer)
                 }

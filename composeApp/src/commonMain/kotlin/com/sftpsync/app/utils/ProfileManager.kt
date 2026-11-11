@@ -1,5 +1,6 @@
 package com.sftpsync.app.utils
 
+import com.sftpsync.app.models.BandwidthConfig
 import com.sftpsync.app.models.SyncLog
 import com.sftpsync.app.models.SyncProfile
 import com.sftpsync.app.models.SyncState
@@ -17,8 +18,33 @@ object ProfileManager {
 
     private const val PROFILES_FILE = "profiles.json"
     private const val LOGS_FILE = "logs.json"
+    private const val BANDWIDTH_FILE = "bandwidth_config.json"
     private const val STATE_FILE_PREFIX = "sync_state_"
     private const val GIT_STATE_FILE_PREFIX = "git_sync_state_"
+
+    fun loadBandwidthConfig(): BandwidthConfig {
+        return try {
+            val content = readTextFile(BANDWIDTH_FILE)
+            val config = if (content.isNullOrEmpty()) BandwidthConfig() else json.decodeFromString<BandwidthConfig>(content)
+            BandwidthLimiter.applyConfig(config)
+            config
+        } catch (e: Exception) {
+            e.printStackTrace()
+            val fallback = BandwidthConfig()
+            BandwidthLimiter.applyConfig(fallback)
+            fallback
+        }
+    }
+
+    fun saveBandwidthConfig(config: BandwidthConfig) {
+        try {
+            BandwidthLimiter.applyConfig(config)
+            val content = json.encodeToString(config)
+            writeTextFile(BANDWIDTH_FILE, content)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     fun loadProfiles(): List<SyncProfile> {
         return try {

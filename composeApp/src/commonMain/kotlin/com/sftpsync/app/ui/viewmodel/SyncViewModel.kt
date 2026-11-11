@@ -34,6 +34,7 @@ data class UiState(
     val directoryApprovalRequest: DirectoryApprovalRequest? = null,
     val concurrency: Int = 2,
     val parallelSyncEnabled: Boolean = true,
+    val bandwidthConfig: BandwidthConfig = BandwidthConfig(),
     val conflictFiles: List<ConflictItem> = emptyList(),
     val showConflictModal: Boolean = false,
     val selectedConflictItem: ConflictItem? = null
@@ -105,6 +106,16 @@ class SyncViewModel {
         }
     }
 
+    fun updateBandwidthConfig(config: BandwidthConfig) {
+        state = state.copy(bandwidthConfig = config)
+        BandwidthLimiter.applyConfig(config)
+        coroutineScope.launch {
+            withContext(Dispatchers.Default) {
+                ProfileManager.saveBandwidthConfig(config)
+            }
+        }
+    }
+
     fun loadAllData() {
         coroutineScope.launch {
             val loadedProfiles = withContext(Dispatchers.Default) {
@@ -128,6 +139,10 @@ class SyncViewModel {
                     null
                 }
             } ?: true
+
+            val loadedBandwidthConfig = withContext(Dispatchers.Default) {
+                ProfileManager.loadBandwidthConfig()
+            }
             
             val selected = if (loadedProfiles.isNotEmpty()) {
                 state.selectedProfile ?: loadedProfiles.first()
@@ -140,7 +155,8 @@ class SyncViewModel {
                 selectedProfile = selected,
                 logs = loadedLogs,
                 concurrency = loadedConcurrency,
-                parallelSyncEnabled = loadedParallelSync
+                parallelSyncEnabled = loadedParallelSync,
+                bandwidthConfig = loadedBandwidthConfig
             )
             
             // Start watchers for all profiles

@@ -181,6 +181,9 @@ class SyncForegroundService : Service() {
                     // 알림창의 내용을 동기화 모드로 역동적으로 갱신
                     updateNotification("동기화 진행 중: ${profile.name}")
 
+                    // 최신 대역폭 제한 설정을 로드하여 적용
+                    com.sftpsync.app.utils.ProfileManager.loadBandwidthConfig()
+
                     val localClient = com.sftpsync.app.utils.createLocalFileClient()
 
                     if (profile.syncMode == com.sftpsync.app.models.SyncMode.GIT) {

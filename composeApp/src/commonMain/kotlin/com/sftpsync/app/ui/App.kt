@@ -686,6 +686,25 @@ fun StatusOverviewCard(profile: SyncProfile, state: UiState) {
                     ) {
                         Text("동기화 조건: 해시 다름 (SHA-256)", color = TextLight, fontSize = 11.sp)
                     }
+
+                    val bw = state.bandwidthConfig
+                    val bwLabel = if (!bw.enabled || (bw.uploadLimitKbps <= 0L && bw.downloadLimitKbps <= 0L)) {
+                        "대역폭 제한: 무제한"
+                    } else {
+                        "대역폭 제한: ↑ ${bw.formatUploadLimit()} · ↓ ${bw.formatDownloadLimit()}"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (bw.enabled && (bw.uploadLimitKbps > 0L || bw.downloadLimitKbps > 0L)) CyanGlow.copy(alpha = 0.15f) else Slate700)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            bwLabel,
+                            color = if (bw.enabled && (bw.uploadLimitKbps > 0L || bw.downloadLimitKbps > 0L)) CyanGlow else TextLight,
+                            fontSize = 11.sp
+                        )
+                    }
                 }
             }
         }
@@ -1998,6 +2017,13 @@ fun SettingsScreen(
             }
 
             item {
+                BandwidthLimitSettingsCard(
+                    config = state.bandwidthConfig,
+                    onUpdateConfig = { viewModel.updateBandwidthConfig(it) }
+                )
+            }
+
+            item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Slate800),
@@ -2544,4 +2570,364 @@ fun formatTimestamp(timestamp: Long): String {
     if (timestamp <= 0L) return "-"
     val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     return sdf.format(java.util.Date(timestamp))
+}
+
+@Composable
+fun BandwidthLimitSettingsCard(
+    config: BandwidthConfig,
+    onUpdateConfig: (BandwidthConfig) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Slate800),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Slate700)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "네트워크 대역폭 제한",
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        "업로드 및 다운로드 최대 전송 속도를 각각 제한하여 네트워크 점유율을 조절합니다.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Switch(
+                    checked = config.enabled,
+                    onCheckedChange = { enabled ->
+                        onUpdateConfig(config.copy(enabled = enabled))
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = CyanGlow,
+                        checkedTrackColor = CyanGlow.copy(alpha = 0.5f),
+                        uncheckedThumbColor = Slate700,
+                        uncheckedTrackColor = Slate900
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (config.enabled) {
+                BandwidthDirectionControl(
+                    title = "↑ 업로드 속도 제한 (Upload)",
+                    accentColor = CyanGlow,
+                    limitKbps = config.uploadLimitKbps,
+                    unit = config.uploadUnit,
+                    onChange = { newKbps, newUnit ->
+                        onUpdateConfig(
+                            config.copy(
+                                uploadLimitKbps = newKbps,
+                                uploadUnit = newUnit
+                            )
+                        )
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Slate700)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                BandwidthDirectionControl(
+                    title = "↓ 다운로드 속도 제한 (Download)",
+                    accentColor = BlueGlow,
+                    limitKbps = config.downloadLimitKbps,
+                    unit = config.downloadUnit,
+                    onChange = { newKbps, newUnit ->
+                        onUpdateConfig(
+                            config.copy(
+                                downloadLimitKbps = newKbps,
+                                downloadUnit = newUnit
+                            )
+                        )
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    "• 속도 값을 0으로 입력하거나 '제한 없음'을 선택하면 해당 방향은 속도 제한 없이 전송됩니다.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Text(
+                    "• 병렬 동기화 사용 시, 설정된 속도는 모든 동시 연결의 합산 대역폭 기준으로 정밀하게 제한됩니다.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Text(
+                    "• 동기화 도중 제한 속도를 변경하거나 비활성화해도 진행 중인 전송에 즉시 반영됩니다.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Slate900)
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "⚡ 대역폭 제한이 비활성화되어 있습니다. 네트워크 최대 가용 속도로 파일을 전송합니다.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class BandwidthPreset(
+    val label: String,
+    val kbps: Long,
+    val unit: BandwidthUnit
+)
+
+private val BANDWIDTH_PRESETS = listOf(
+    BandwidthPreset("제한 없음", 0L, BandwidthUnit.MBPS),
+    BandwidthPreset("256 KB/s", 256L, BandwidthUnit.KBPS),
+    BandwidthPreset("512 KB/s", 512L, BandwidthUnit.KBPS),
+    BandwidthPreset("1 MB/s", 1024L, BandwidthUnit.MBPS),
+    BandwidthPreset("5 MB/s", 5L * 1024L, BandwidthUnit.MBPS),
+    BandwidthPreset("10 MB/s", 10L * 1024L, BandwidthUnit.MBPS),
+    BandwidthPreset("50 MB/s", 50L * 1024L, BandwidthUnit.MBPS)
+)
+
+private fun formatInputForUnit(kbps: Long, unit: BandwidthUnit): String {
+    if (kbps <= 0L) return "0"
+    return when (unit) {
+        BandwidthUnit.KBPS -> kbps.toString()
+        BandwidthUnit.MBPS -> {
+            if (kbps % 1024L == 0L) {
+                (kbps / 1024L).toString()
+            } else {
+                String.format(java.util.Locale.US, "%.2f", kbps / 1024.0).trimEnd('0').trimEnd('.')
+            }
+        }
+    }
+}
+
+@Composable
+private fun BandwidthDirectionControl(
+    title: String,
+    accentColor: Color,
+    limitKbps: Long,
+    unit: BandwidthUnit,
+    onChange: (Long, BandwidthUnit) -> Unit
+) {
+    var inputText by remember {
+        mutableStateOf(formatInputForUnit(limitKbps, unit))
+    }
+
+    LaunchedEffect(limitKbps, unit) {
+        val currentNumeric = inputText.toDoubleOrNull() ?: 0.0
+        val currentParsedKbps = when (unit) {
+            BandwidthUnit.KBPS -> currentNumeric.toLong().coerceAtLeast(0L)
+            BandwidthUnit.MBPS -> (currentNumeric * 1024.0).toLong().coerceAtLeast(0L)
+        }
+        if (currentParsedKbps != limitKbps) {
+            inputText = formatInputForUnit(limitKbps, unit)
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = title,
+                color = TextLight,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (limitKbps > 0L) accentColor.copy(alpha = 0.15f) else Slate700)
+                    .border(
+                        width = 1.dp,
+                        color = if (limitKbps > 0L) accentColor else Slate600,
+                        shape = RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "현재 적용: ${BandwidthConfig.formatKbps(limitKbps)}",
+                    color = if (limitKbps > 0L) accentColor else TextMuted,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        // Direct input field + Unit selector (KB/s | MB/s)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            OutlinedTextField(
+                value = inputText,
+                onValueChange = { raw ->
+                    val filtered = raw.filter { it.isDigit() || it == '.' }
+                    if (filtered.count { it == '.' } <= 1) {
+                        inputText = filtered
+                        val numeric = filtered.toDoubleOrNull() ?: 0.0
+                        val newKbps = when (unit) {
+                            BandwidthUnit.KBPS -> numeric.toLong().coerceAtLeast(0L)
+                            BandwidthUnit.MBPS -> (numeric * 1024.0).toLong().coerceAtLeast(0L)
+                        }
+                        onChange(newKbps, unit)
+                    }
+                },
+                label = {
+                    Text(
+                        if (unit == BandwidthUnit.MBPS) "제한 속도 입력 (MB/s, 0=무제한)"
+                        else "제한 속도 입력 (KB/s, 0=무제한)"
+                    )
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accentColor)
+            )
+
+            // Unit toggle buttons
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Slate900)
+                    .border(1.dp, Slate700, RoundedCornerShape(8.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf(
+                    BandwidthUnit.KBPS to "KB/s",
+                    BandwidthUnit.MBPS to "MB/s"
+                ).forEach { (targetUnit, unitLabel) ->
+                    val isSelected = unit == targetUnit
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) accentColor else Color.Transparent)
+                            .clickable {
+                                if (unit != targetUnit) {
+                                    val numeric = inputText.toDoubleOrNull() ?: 0.0
+                                    val newKbps = when (targetUnit) {
+                                        BandwidthUnit.KBPS -> numeric.toLong().coerceAtLeast(0L)
+                                        BandwidthUnit.MBPS -> (numeric * 1024.0).toLong().coerceAtLeast(0L)
+                                    }
+                                    onChange(newKbps, targetUnit)
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = unitLabel,
+                            color = if (isSelected) Slate900 else TextLight,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Preset buttons row (wrapping or two clean rows for responsive display)
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = "빠른 프리셋",
+                color = TextMuted,
+                fontSize = 11.sp
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                BANDWIDTH_PRESETS.take(4).forEach { preset ->
+                    val isSelected = limitKbps == preset.kbps
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) accentColor.copy(alpha = 0.2f) else Slate900)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) accentColor else Slate700,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable {
+                                inputText = formatInputForUnit(preset.kbps, preset.unit)
+                                onChange(preset.kbps, preset.unit)
+                            }
+                            .padding(vertical = 8.dp, horizontal = 4.dp)
+                    ) {
+                        Text(
+                            text = preset.label,
+                            color = if (isSelected) accentColor else TextLight,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                BANDWIDTH_PRESETS.drop(4).forEach { preset ->
+                    val isSelected = limitKbps == preset.kbps
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) accentColor.copy(alpha = 0.2f) else Slate900)
+                            .border(
+                                width = 1.dp,
+                                color = if (isSelected) accentColor else Slate700,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable {
+                                inputText = formatInputForUnit(preset.kbps, preset.unit)
+                                onChange(preset.kbps, preset.unit)
+                            }
+                            .padding(vertical = 8.dp, horizontal = 4.dp)
+                    ) {
+                        Text(
+                            text = preset.label,
+                            color = if (isSelected) accentColor else TextLight,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
