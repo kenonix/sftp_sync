@@ -159,25 +159,57 @@ pub fn calculate_sync_actions(
             }
 
             // Case 3: Local exists, Remote does not, exists in Last State (Remote deleted)
-            (Some(l), None, Some(_m)) => {
-                actions.push(NativeSyncAction {
-                    relative_path: path,
-                    action_type: NativeActionType::DeleteLocal,
-                    size: l.size,
-                    local_modified: l.last_modified,
-                    remote_modified: 0,
-                });
+            (Some(l), None, Some(m)) => {
+                let local_changed = if let (Some(lh), Some(mh)) = (&l.hash, &m.hash) {
+                    lh != mh
+                } else {
+                    l.size != m.size || (l.last_modified - m.last_modified).abs() > 2000
+                };
+
+                if local_changed {
+                    actions.push(NativeSyncAction {
+                        relative_path: path,
+                        action_type: NativeActionType::Conflict,
+                        size: l.size,
+                        local_modified: l.last_modified,
+                        remote_modified: 0,
+                    });
+                } else {
+                    actions.push(NativeSyncAction {
+                        relative_path: path,
+                        action_type: NativeActionType::DeleteLocal,
+                        size: l.size,
+                        local_modified: l.last_modified,
+                        remote_modified: 0,
+                    });
+                }
             }
 
             // Case 4: Local does not exist, Remote exists, exists in Last State (Local deleted)
-            (None, Some(r), Some(_m)) => {
-                actions.push(NativeSyncAction {
-                    relative_path: path,
-                    action_type: NativeActionType::DeleteRemote,
-                    size: r.size,
-                    local_modified: 0,
-                    remote_modified: r.last_modified,
-                });
+            (None, Some(r), Some(m)) => {
+                let remote_changed = if let (Some(rh), Some(mh)) = (&r.hash, &m.hash) {
+                    rh != mh
+                } else {
+                    r.size != m.size || (r.last_modified - m.last_modified).abs() > 2000
+                };
+
+                if remote_changed {
+                    actions.push(NativeSyncAction {
+                        relative_path: path,
+                        action_type: NativeActionType::Conflict,
+                        size: r.size,
+                        local_modified: 0,
+                        remote_modified: r.last_modified,
+                    });
+                } else {
+                    actions.push(NativeSyncAction {
+                        relative_path: path,
+                        action_type: NativeActionType::DeleteRemote,
+                        size: r.size,
+                        local_modified: 0,
+                        remote_modified: r.last_modified,
+                    });
+                }
             }
 
             // Case 5: Local exists only (New local file)
