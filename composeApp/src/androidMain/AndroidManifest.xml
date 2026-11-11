@@ -4,6 +4,7 @@
 
     <!-- Permissions for Network and SFTP -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
     <!-- Permissions for Local Storage Access -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />

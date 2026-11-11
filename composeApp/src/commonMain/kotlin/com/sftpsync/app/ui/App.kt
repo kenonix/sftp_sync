@@ -706,6 +706,19 @@ fun StatusOverviewCard(profile: SyncProfile, state: UiState) {
                         )
                     }
                 }
+
+                if (state.bandwidthConfig.blockMeteredDownload) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(WarningYellow.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("모바일(종량제) 다운로드 차단 활성화", color = WarningYellow, fontSize = 11.sp)
+                        }
+                    }
+                }
             }
         }
     }
@@ -2024,6 +2037,13 @@ fun SettingsScreen(
             }
 
             item {
+                MeteredNetworkSettingsCard(
+                    config = state.bandwidthConfig,
+                    onUpdateConfig = { viewModel.updateBandwidthConfig(it) }
+                )
+            }
+
+            item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Slate800),
@@ -2694,6 +2714,119 @@ fun BandwidthLimitSettingsCard(
         }
     }
 }
+
+@Composable
+fun MeteredNetworkSettingsCard(
+    config: BandwidthConfig,
+    onUpdateConfig: (BandwidthConfig) -> Unit
+) {
+    val isMetered = remember { isMeteredNetwork() }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Slate800),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Slate700)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "모바일 / 종량제 네트워크 다운로드 차단",
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        "LTE / 5G 모바일 데이터나 종량제 핫스팟 연결 시 파일 다운로드를 자동으로 스킵하여 요금을 절약합니다.",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Switch(
+                    checked = config.blockMeteredDownload,
+                    onCheckedChange = { blocked ->
+                        onUpdateConfig(config.copy(blockMeteredDownload = blocked))
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = WarningYellow,
+                        checkedTrackColor = WarningYellow.copy(alpha = 0.5f),
+                        uncheckedThumbColor = Slate700,
+                        uncheckedTrackColor = Slate900
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Realtime Network Status Badge
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isMetered) WarningYellow.copy(alpha = 0.15f) else SuccessGreen.copy(alpha = 0.15f))
+                    .border(1.dp, if (isMetered) WarningYellow else SuccessGreen, RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (isMetered) Icons.Filled.SignalCellularAlt else Icons.Filled.Wifi,
+                    contentDescription = null,
+                    tint = if (isMetered) WarningYellow else SuccessGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        if (isMetered) "현재 모바일 / 종량제 네트워크 감지됨" else "현재 비종량제 네트워크 연결 중 (Wi-Fi / LAN)",
+                        color = if (isMetered) WarningYellow else SuccessGreen,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        if (isMetered) {
+                            if (config.blockMeteredDownload) "다운로드 차단이 활성화되어 있어 원격 파일 다운로드가 자동으로 건너뛰어집니다."
+                            else "차단 옵션이 꺼져 있어 모바일 데이터로 다운로드가 허용됩니다."
+                        } else {
+                            "무제한 네트워크 환경이므로 파일 다운로드가 정상 실행됩니다."
+                        },
+                        color = TextLight,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "• 로컬 파일의 변경사항 업로드는 계속 수행되며, 원격 서버로부터의 다운로드만 안전하게 스킵됩니다.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Text(
+                    "• 양방향 충돌 해결 시 원격 파일 복사 및 Git 원격 저장소 풀(Pull)도 데이터 보호 대상에 포함됩니다.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Text(
+                    "• 비종량제 Wi-Fi 또는 유선 인터넷에 다시 연결되면 다음 동기화 시점에 자동으로 다운로드됩니다.",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+    }
+}
+
 
 private data class BandwidthPreset(
     val label: String,

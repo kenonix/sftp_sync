@@ -106,6 +106,11 @@ expect suspend fun exportSettings(jsonContent: String): String?
  */
 expect suspend fun importSettings(): String?
 
+/**
+ * Checks whether the active network connection is metered (e.g. mobile cellular data or metered Wi-Fi).
+ */
+expect fun isMeteredNetwork(): Boolean
+
 
 
 

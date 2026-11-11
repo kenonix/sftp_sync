@@ -13,13 +13,26 @@ object BandwidthLimiter {
     @kotlin.concurrent.Volatile
     private var enabled: Boolean = false
 
+    @kotlin.concurrent.Volatile
+    var isBlockMeteredDownloadEnabled: Boolean = false
+        private set
+
     private val uploadBucket = TokenBucket()
     private val downloadBucket = TokenBucket()
 
     fun applyConfig(config: BandwidthConfig) {
         enabled = config.enabled
+        isBlockMeteredDownloadEnabled = config.blockMeteredDownload
         uploadBucket.setLimit(if (config.enabled) config.uploadLimitBytesPerSec else 0L)
         downloadBucket.setLimit(if (config.enabled) config.downloadLimitBytesPerSec else 0L)
+    }
+
+    /**
+     * 모바일(종량제) 네트워크 다운로드 차단 옵션이 활성화되어 있고
+     * 현재 기기가 종량제 네트워크(셀룰러 데이터, 모바일 핫스팟 등)에 연결되어 있는지 확인합니다.
+     */
+    fun shouldBlockDownload(): Boolean {
+        return isBlockMeteredDownloadEnabled && isMeteredNetwork()
     }
 
     fun throttleUpload(bytes: Long) {

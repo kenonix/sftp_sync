@@ -484,5 +484,14 @@ actual suspend fun importSettings(): String? {
     }
 }
 
+actual fun isMeteredNetwork(): Boolean {
+    return try {
+        val cm = AndroidContext.context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        cm?.isActiveNetworkMetered ?: false
+    } catch (e: Exception) {
+        false
+    }
+}
+
 
 

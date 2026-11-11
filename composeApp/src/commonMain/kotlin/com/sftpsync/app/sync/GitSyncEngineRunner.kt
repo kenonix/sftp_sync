@@ -51,28 +51,40 @@ class GitSyncEngineRunner(
 
         // Git 원격 저장소에서 최신 커밋 풀(Pull)
         if (profile.gitRepositoryUrl.isNotEmpty()) {
-            onProgress("Git 원격 저장소에서 풀(Pull) 진행 중...", 0.05f)
-            val pullSuccess = gitClient.pull()
-            if (pullSuccess) {
+            if (com.sftpsync.app.utils.BandwidthLimiter.shouldBlockDownload()) {
                 onLog(SyncLog(
                     timestamp = System.currentTimeMillis(),
                     profileId = profile.id,
                     profileName = profile.name,
                     relativePath = "",
                     actionType = "PULL",
-                    status = SyncLogStatus.SUCCESS,
-                    message = "원격 저장소로부터 최신 변경사항 풀(Pull) 완료"
+                    status = SyncLogStatus.SKIPPED,
+                    message = "원격 저장소 풀(Pull) 건너뜀: 모바일/종량제 네트워크 다운로드 차단 정책"
                 ))
             } else {
-                onLog(SyncLog(
-                    timestamp = System.currentTimeMillis(),
-                    profileId = profile.id,
-                    profileName = profile.name,
-                    relativePath = "",
-                    actionType = "PULL",
-                    status = SyncLogStatus.WARNING,
-                    message = "원격 저장소 풀(Pull) 실패 (원격 저장소가 비어있거나 접근 권한이 없을 수 있습니다)"
-                ))
+                onProgress("Git 원격 저장소에서 풀(Pull) 진행 중...", 0.05f)
+                val pullSuccess = gitClient.pull()
+                if (pullSuccess) {
+                    onLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = "",
+                        actionType = "PULL",
+                        status = SyncLogStatus.SUCCESS,
+                        message = "원격 저장소로부터 최신 변경사항 풀(Pull) 완료"
+                    ))
+                } else {
+                    onLog(SyncLog(
+                        timestamp = System.currentTimeMillis(),
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        relativePath = "",
+                        actionType = "PULL",
+                        status = SyncLogStatus.WARNING,
+                        message = "원격 저장소 풀(Pull) 실패 (원격 저장소가 비어있거나 접근 권한이 없을 수 있습니다)"
+                    ))
+                }
             }
         }
 

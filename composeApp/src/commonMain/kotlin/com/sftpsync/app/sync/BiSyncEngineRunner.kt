@@ -425,6 +425,19 @@ class BiSyncEngineRunner(
                                     }
 
                                     SyncActionType.DOWNLOAD -> {
+                                        if (com.sftpsync.app.utils.BandwidthLimiter.shouldBlockDownload()) {
+                                            onLog(SyncLog(
+                                                timestamp = System.currentTimeMillis(),
+                                                profileId = profile.id,
+                                                profileName = profile.name,
+                                                relativePath = action.relativePath,
+                                                actionType = "DOWNLOAD",
+                                                status = SyncLogStatus.SKIPPED,
+                                                message = "모바일/종량제 네트워크 다운로드 차단 정책에 의해 건너뛰었습니다."
+                                            ))
+                                            continue
+                                        }
+
                                         val localFile = "${profile.localPath}/${action.relativePath}"
                                         val remoteFile = "${profile.remotePath}/${action.relativePath}"
                                         
@@ -647,6 +660,18 @@ class BiSyncEngineRunner(
                 throw Exception("충돌 해결 중 업로드 실패: ${client.getLastError() ?: "알 수 없는 오류"}")
             }
         } else if (resolved.actionType == SyncActionType.DOWNLOAD) {
+            if (com.sftpsync.app.utils.BandwidthLimiter.shouldBlockDownload()) {
+                onLog(SyncLog(
+                    timestamp = System.currentTimeMillis(),
+                    profileId = profile.id,
+                    profileName = profile.name,
+                    relativePath = resolved.relativePath,
+                    actionType = "CONFLICT_RESOLVED_DOWNLOAD",
+                    status = SyncLogStatus.SKIPPED,
+                    message = "충돌 해결 다운로드 건너뜀: 모바일/종량제 네트워크 다운로드 차단 정책"
+                ))
+                return
+            }
             val ok = client.downloadFile(remoteFile, localFile) {}
             if (ok) {
                 val remoteModified = resolved.remoteLastModified
@@ -718,6 +743,19 @@ class BiSyncEngineRunner(
         
         val remoteFileOriginal = "${profile.remotePath}/$relPath"
         val remoteFileConflict = "${profile.remotePath}/$finalRemoteRenamed"
+
+        if (com.sftpsync.app.utils.BandwidthLimiter.shouldBlockDownload()) {
+            onLog(SyncLog(
+                timestamp = System.currentTimeMillis(),
+                profileId = profile.id,
+                profileName = profile.name,
+                relativePath = relPath,
+                actionType = "CONFLICT_KEEP_BOTH",
+                status = SyncLogStatus.SKIPPED,
+                message = "충돌 파일 보존 건너뜀: 원격 다운로드가 모바일/종량제 네트워크 차단 정책으로 제한되었습니다."
+            ))
+            return
+        }
 
         // 1. Download Remote Original to Local Conflict file
         val downloadOk = client.downloadFile(remoteFileOriginal, localFileConflict) {}

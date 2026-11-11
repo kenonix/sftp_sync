@@ -14,7 +14,8 @@ data class BandwidthConfig(
     val uploadLimitKbps: Long = 0L,
     val downloadLimitKbps: Long = 0L,
     val uploadUnit: BandwidthUnit = BandwidthUnit.MBPS,
-    val downloadUnit: BandwidthUnit = BandwidthUnit.MBPS
+    val downloadUnit: BandwidthUnit = BandwidthUnit.MBPS,
+    val blockMeteredDownload: Boolean = false
 ) {
     val uploadLimitBytesPerSec: Long
         get() = if (enabled && uploadLimitKbps > 0L) uploadLimitKbps * 1024L else 0L

@@ -272,6 +272,8 @@ actual suspend fun importSettings(): String? = kotlinx.coroutines.withContext(ko
     }
 }
 
+actual fun isMeteredNetwork(): Boolean = false
+
 
 
 
