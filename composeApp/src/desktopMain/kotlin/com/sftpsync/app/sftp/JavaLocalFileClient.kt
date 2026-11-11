@@ -55,6 +55,11 @@ class JavaLocalFileClient : LocalFileClient {
     override fun getFileHash(localFilePath: String): String? {
         val file = File(localFilePath)
         if (!file.exists() || file.isDirectory) return null
+
+        // Rust 네이티브 코어 사용 가능 시 초고속 SHA-256 연산 시도
+        val nativeHash = com.sftpsync.app.rust.RustCoreBridge.calculateFileSha256(localFilePath)
+        if (nativeHash != null) return nativeHash
+
         return try {
             val digest = java.security.MessageDigest.getInstance("SHA-256")
             file.inputStream().use { fis ->

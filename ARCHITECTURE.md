@@ -8,7 +8,8 @@
 5. [동기화 엔진 상세 분석](#동기화-엔진-상세-분석)
 6. [실행 흐름 (시퀀스 다이어그램)](#실행-흐름-시퀀스-다이어그램)
 7. [충돌 해결 메커니즘](#충돌-해결-메커니즘)
-8. [상태 관리](#상태-관리)
+8: 8. [상태 관리](#상태-관리)
+9: [Rust + UniFFI 하이브리드 아키텍처](#rust--uniffi-하이브리드-아키텍처)
 
 ---
 
@@ -1160,6 +1161,34 @@ desktopMain/
 ├── sftp/JschSftpClient.kt
 └── sftp/JavaLocalFileClient.kt
 ```
+
+---
+
+## 9. Rust + UniFFI 하이브리드 아키텍처
+
+`experiment/rust-uniffi` 브랜치에서 제공되는 고성능 네이티브 가속 레이어입니다.
+
+```mermaid
+graph TD
+    subgraph KotlinApp["Kotlin / Compose Layer"]
+        UI["Compose Multiplatform UI"]
+        Service["SyncForegroundService (Android)"]
+        Bridge["RustCoreBridge (Graceful Fallback)"]
+    end
+
+    subgraph NativeRust["Rust Core Layer (sftp_sync_core)"]
+        Engine["engine.rs: 3-Way Diff Engine"]
+        Limiter["bandwidth.rs: Token Bucket Rate Limiter"]
+        Hasher["hasher.rs: Streaming SHA-256"]
+    end
+
+    UI --> Bridge
+    Service --> Bridge
+    Bridge -->|UniFFI / JNI| NativeRust
+```
+
+- **성능 이점**: 수만 개 파일의 3-Way Diff 비교 및 대용량 파일 SHA-256 스트리밍 해시 계산 시 JVM 가비지 컬렉션(GC) 일시 정지 현상 제거 및 네이티브 속도 제공.
+- **안전한 폴백**: 네이티브 `.so`/`.dll` 라이브러리가 로드되지 않은 환경에서는 기존의 Kotlin 순수 구현체로 자동 폴백됩니다.
 
 ---
 
